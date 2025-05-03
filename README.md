@@ -1,6 +1,6 @@
 # eBird 工具
 
-- [鳥訊快報整理](alerts/)
+- [鳥訊快報整理](https://christorng.github.io/eBird/alerts/)
 
 ## 原始碼
 
