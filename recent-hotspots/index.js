@@ -4,7 +4,7 @@ async function fetchAndRender() {
   const params = new URLSearchParams(window.location.search);
   const location = params.get('location') || 'TW-TPQ';
   // 使用本機 proxy server 解決 CORS 問題
-  const url = `http://127.0.0.1:5000/proxy?url=${encodeURIComponent(`https://ebird.org/region/${location}/recent-checklists`)}`;
+  const url = `../proxy?url=${encodeURIComponent(`https://ebird.org/region/${location}/recent-checklists`)}`;
   const html = await fetchHtml(url);
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const title = doc.querySelector('h1')?.innerText?.trim() || '';
