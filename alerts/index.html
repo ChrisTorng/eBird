@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eBird 鳥訊快報整理</title>
+    <link rel="stylesheet" href="index.css"/>
+</head>
+<body>
+    <div class="header">
+        <h1>eBird <a href="https://ebird.org/alerts" target="_blank">鳥訊快報</a>整理</h1>
+        <form>
+            <label><input type="radio" name="style" id="list"></radio>條列</label>
+            <label><input type="radio" name="style" id="table" checked></radio>表格</label>
+        </form>
+        <input type="text" id="source"></input>
+    </div>
+    <div id="history">
+        可複製全部鳥訊快報內容，貼入文字方塊。亦支援隨意 Ctrl+V 貼上即轉換，不需要將游標置於文字方塊中。<br/>
+        亦可直接點上述「條列/表格」選項，在取得權限後，自動取得剪貼簿內容。<br/>
+        已顯示轉換結果的畫面中仍可任意貼上再次轉換 (新的快報)。<br/>
+        <br/>
+        滑鼠移至 快報標題 會提示快報詳細意義，移至 鳥種中文名稱 或 地點中文名稱，會提示原始完整名稱，時間 上會提示完整日期時間。<br/>
+        <a href="https://github.com/ChrisTorng/eBird" target="_blank">GitHub 原始碼</a><br/>
+        <a href="https://github.com/ChrisTorng/eBird/issues" target="_blank">回報問題</a>
+    </div>
+    <script src="index.js"></script>
+</body>
+</html>
