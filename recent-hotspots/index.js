@@ -96,21 +96,40 @@ function renderTable(title, records) {
   // 標題
   document.getElementById('main-title').innerText = `${title} (${rangeStr})`;
 
-  // 表格
-  let html = '<div class="table-wrap"><table><thead><tr><th>地點次數</th><th>地點</th><th></th><th>日期</th><th>鳥種數</th><th>日期</th><th>鳥友名</th></tr></thead><tbody>';
+  // 新表格格式
+  let html = '<div class="table-wrap"><table><thead><tr><th>地點次數</th><th>地點</th><th>日期</th><th>鳥種數</th><th>鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
-    html += `<tr class="group-row"><td>${g.count}</td><td colspan="6">${g.loc}</td></tr>`;
+    // 取地點連結
+    let locDiv = document.createElement('div');
+    locDiv.innerHTML = g.arr[0].location;
+    let locA = locDiv.querySelector('a');
+    if (locA) {
+      locA.setAttribute('target', '_blank');
+      locA.classList.add('location-link');
+      // 只保留 a 標籤
+      locDiv.innerHTML = '';
+      locDiv.appendChild(locA);
+    }
+    let locHtml = locA ? locDiv.innerHTML : g.loc;
+    html += `<tr class="group-row"><td>${g.count}</td><td colspan="4">${locHtml}</td></tr>`;
     g.arr.forEach(r => {
       // 鳥種數
       let species = r.species.replace(/<a /, '<a target="_blank" class="species-link" ');
       // 日期
       const d = parseDate(r.date);
       let dateStr = d ? formatDate(d) : '';
-      // 鳥友名
-      let observer = r.observer.replace(/<svg[\s\S]*?svg>/, '').replace(/<span class="is-visuallyHidden">.*?<\/span>/, '').trim();
-      // 地點
-      let locHtml = r.location.replace(/<a /, '<a target="_blank" class="location-link" ');
-      html += `<tr><td></td><td>${locHtml}</td><td></td><td>${dateStr}</td><td>${species}</td><td>${dateStr}</td><td>${observer}</td></tr>`;
+      // 鳥友名加連結
+      let observerDiv = document.createElement('div');
+      observerDiv.innerHTML = r.observer;
+      let observerA = observerDiv.querySelector('a');
+      if (observerA) {
+        observerA.setAttribute('target', '_blank');
+        observerA.classList.add('observer-link');
+        observerDiv.innerHTML = '';
+        observerDiv.appendChild(observerA);
+      }
+      let observer = observerA ? observerDiv.innerHTML : observerDiv.textContent.trim();
+      html += `<tr><td></td><td></td><td>${dateStr}</td><td>${species}</td><td>${observer}</td></tr>`;
     });
   });
   html += '</tbody></table></div>';
