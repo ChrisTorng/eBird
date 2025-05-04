@@ -75,6 +75,19 @@ th, td {
   text-align: left;
 }
 
+/* 限制鳥種/日期/鳥友名最大寬度，避免在寬螢幕拉太寬 */
+.observer-cell {
+  width: 100%;
+}
+
+/* 保證次數欄展開收合鈕與數字不折行 */
+.count-cell {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+}
+
 /* 優化地點內項目顯示：去除地點內項目格線、單行高度、無多餘行距 */
 tr.location-item-row td {
   border: none;
@@ -87,6 +100,7 @@ tr.location-item-row td {
 }
 th {
   background: #f0f0f0;
+  white-space: nowrap;
 }
 tr.group-row {
   background: #e8f4ff;
@@ -112,6 +126,12 @@ tr.group-row {
   }
   table {
     font-size: 0.98em;
+  }
+  th, td {
+    padding: 0.1rem 0.1rem;;
+  }
+  .toggle-group-btn {
+    margin-right: 0.1rem;
   }
 }
 .species-link {
