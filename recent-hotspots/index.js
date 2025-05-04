@@ -1,13 +1,65 @@
 // recent-hotspots/index.js
 
-async function fetchAndRender() {
-  const params = new URLSearchParams(window.location.search);
-  const location = params.get('location') || 'TW-TPQ';
+// 台灣地區與縣市中文對應表（最前面加上台灣）
+const TAIWAN_REGIONS = [
+  { code: 'TW', name: '台灣' },
+  { code: 'TW-TPE', name: '臺北市' },
+  { code: 'TW-TPQ', name: '新北市' },
+  { code: 'TW-TAO', name: '桃園市' },
+  { code: 'TW-TXG', name: '臺中市' },
+  { code: 'TW-TNN', name: '臺南市' },
+  { code: 'TW-KHH', name: '高雄市' },
+  { code: 'TW-KEE', name: '基隆市' },
+  { code: 'TW-HSZ', name: '新竹市' },
+  { code: 'TW-HSQ', name: '新竹縣' },
+  { code: 'TW-MIA', name: '苗栗縣' },
+  { code: 'TW-CHA', name: '彰化縣' },
+  { code: 'TW-NAN', name: '南投縣' },
+  { code: 'TW-YUN', name: '雲林縣' },
+  { code: 'TW-CYI', name: '嘉義市' },
+  { code: 'TW-CYQ', name: '嘉義縣' },
+  { code: 'TW-PIF', name: '屏東縣' },
+  { code: 'TW-ILA', name: '宜蘭縣' },
+  { code: 'TW-HUA', name: '花蓮縣' },
+  { code: 'TW-TTT', name: '臺東縣' },
+  { code: 'TW-PEN', name: '澎湖縣' },
+  { code: 'TW-KIN', name: '金門縣' },
+  { code: 'TW-LIE', name: '連江縣' },
+];
+
+function getRegionName(code) {
+  const found = TAIWAN_REGIONS.find(r => r.code === code);
+  return found ? found.name : code;
+}
+
+function renderRegionLinks(currentCode) {
+  let html = '<div class="region-link-list" id="region-link-list">';
+  TAIWAN_REGIONS.forEach(r => {
+    if (r.code === currentCode) {
+      html += `<b class="region-link-current">${r.name}</b>\n`;
+    } else {
+      html += `<a href="?location=${r.code}" class="region-link">${r.name}</a>\n`;
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+async function fetchAndRender(location) {
+  if (!location) return;
+  // 先顯示標題、地區選擇列、資料來源與載入中
+  const area = document.getElementById('table-area');
+  const regionName = getRegionName(location);
+  let html = '';
+  html += renderRegionLinks(location);
+  html += `<h2 id="main-title">${regionName}</h2>`;
+  html += '<div class="loading">載入中...</div>';
+  html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${location}/recent-checklists" target="_blank">eBird 最新紀錄清單 - ${regionName}</a></div>`;
+  area.innerHTML = html;
   // 使用本機 proxy server 解決 CORS 問題
   const url = `../proxy?url=${encodeURIComponent(`https://ebird.org/region/${location}/recent-checklists`)}`;
-  const html = await fetchHtml(url);
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const title = doc.querySelector('h1')?.innerText?.trim() || '';
+  const htmlText = await fetchHtml(url);
+  const doc = new DOMParser().parseFromString(htmlText, 'text/html');
   const rows = Array.from(doc.querySelectorAll('.RecentChecklists .Chk-species'));
   const records = [];
   rows.forEach(speciesDiv => {
@@ -16,7 +68,6 @@ async function fetchAndRender() {
     const observerDiv = parent.querySelector('.Chk-observer');
     const locationDiv = parent.querySelector('.Chk-location');
     if (speciesDiv && dateDiv && observerDiv && locationDiv) {
-    //   console.log(speciesDiv.innerHTML, dateDiv.innerHTML, observerDiv.innerHTML, locationDiv.innerHTML);
       records.push({
         species: speciesDiv.innerHTML,
         date: dateDiv.innerHTML,
@@ -25,7 +76,12 @@ async function fetchAndRender() {
       });
     }
   });
-  renderTable(title, records);
+  renderTable(location, records);
+}
+function renderLocationSelector(currentCode) {
+  const area = document.getElementById('table-area');
+  area.innerHTML = renderRegionLinks(currentCode || 'TW');
+  document.getElementById('main-title').innerText = '台灣 eBird 熱門鳥點查詢';
 }
 
 async function fetchHtml(url) {
@@ -64,11 +120,12 @@ function formatDate(d) {
   return `${y}/${m}/${day} ${hh}:${mm}`;
 }
 
-function renderTable(title, records) {
-  // 過濾掉地點為標題的紀錄
+function renderTable(locationCode, records) {
+  // 用地區中文名過濾
+  const regionName = getRegionName(locationCode);
   const filtered = records.filter(r => {
     const loc = parseLocationName(r.location);
-    return loc !== title && loc !== '' && loc !== 'Location';
+    return loc !== regionName && loc !== '' && loc !== 'Location';
   });
   // 依地點分組
   const groupMap = {};
@@ -94,11 +151,11 @@ function renderTable(title, records) {
   });
   const rangeStr = minDate && maxDate ? `${formatDate(maxDate).split(' ')[0]}-${formatDate(minDate).split(' ')[0]}` : '';
 
-  // 標題
-  document.getElementById('main-title').innerText = `${title} (${rangeStr})`;
+  // 標題（加上日期範圍）
+  let html = '';
+  html += `<h2 id="main-title">${regionName} (${rangeStr})</h2>`;
 
-  // 新表格格式
-  let html = '<div class="table-wrap"><table><thead><tr><th>次數/地點</th><th>日期</th><th>鳥種數</th><th>鳥友名</th></tr></thead><tbody>';
+  html += '<div class="table-wrap"><table><thead><tr><th>次數/地點</th><th>日期</th><th>鳥種數</th><th>鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
     // 取地點連結
     let locDiv = document.createElement('div');
@@ -125,7 +182,22 @@ function renderTable(title, records) {
     });
   });
   html += '</tbody></table></div>';
-  document.getElementById('table-area').innerHTML = html;
+  // 資料來源
+  html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${locationCode}/recent-checklists" target="_blank">eBird 最新紀錄清單 - ${regionName}</a></div>`;
+  // 只更新內容（不再加地區列，因 fetchAndRender 已處理）
+  const area = document.getElementById('table-area');
+  area.innerHTML = renderRegionLinks(locationCode) + html;
 }
 
-document.addEventListener('DOMContentLoaded', fetchAndRender);
+document.addEventListener('DOMContentLoaded', function() {
+  const params = new URLSearchParams(window.location.search);
+  let location = params.get('location');
+  if (!location) {
+    // 未指定地區自動導向台灣
+    const url = new URL(window.location.href);
+    url.searchParams.set('location', 'TW');
+    window.location.replace(url.toString());
+    return;
+  }
+  fetchAndRender(location);
+});
