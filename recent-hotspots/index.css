@@ -52,11 +52,11 @@ body {
 }
 .container {
   max-width: 1200px;
-  margin: 2rem auto;
+  margin: 0 auto;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  padding: 2rem;
+  padding: 0.5rem;
 }
 h1, h2 {
   margin: 0 0 1rem 0;
@@ -74,12 +74,45 @@ th, td {
   padding: 0.5rem 0.75rem;
   text-align: left;
 }
+
+/* 優化地點內項目顯示：去除地點內項目格線、單行高度、無多餘行距 */
+tr.location-item-row td {
+  border: none;
+  padding: 0 0.5em;
+  line-height: 1.2;
+  height: 2.2em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 th {
   background: #f0f0f0;
 }
 tr.group-row {
   background: #e8f4ff;
   font-weight: bold;
+}
+
+/* 行動裝置優化：去除四圍多餘留白 */
+@media (max-width: 600px) {
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+  .container {
+    max-width: 100vw;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.2rem;
+  }
+  .table-wrap {
+    padding: 0;
+  }
+  table {
+    font-size: 0.98em;
+  }
 }
 .species-link {
   display: inline-block;

@@ -112,12 +112,11 @@ function parseDate(dateHtml) {
 
 function formatDate(d) {
   if (!d) return '';
-  const y = d.getFullYear();
-  const m = (d.getMonth()+1).toString().padStart(2,'0');
+  const m = (d.getMonth()+1).toString();
   const day = d.getDate().toString().padStart(2,'0');
   const hh = d.getHours().toString().padStart(2,'0');
   const mm = d.getMinutes().toString().padStart(2,'0');
-  return `${y}/${m}/${day} ${hh}:${mm}`;
+  return `${m}/${day} ${hh}:${mm}`;
 }
 
 function renderTable(locationCode, records) {
@@ -162,7 +161,7 @@ function renderTable(locationCode, records) {
   html += `<h2 id="main-title">${regionName} (${rangeStr})</h2>`;
   html += expandCollapseBtns;
 
-  html += '<div class="table-wrap"><table><thead><tr><th>次數/地點</th><th>日期</th><th>鳥種數</th><th>鳥友名</th></tr></thead><tbody>';
+  html += '<div class="table-wrap"><table><thead><tr><th>次數</th><th>鳥種數</th><th>日期</th><th>鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
     // 取地點連結
     let locDiv = document.createElement('div');
@@ -187,7 +186,7 @@ function renderTable(locationCode, records) {
       let dateStr = d ? formatDate(d) : '';
       // 鳥友名
       let observer = r.observer.replace(/<a /, '<a target="_blank" class="species-link" ');
-      html += `<tr class="group-detail-row" data-group="${groupId}" style="display:none"><td></td><td>${dateStr}</td><td>${species}</td><td>${observer}</td></tr>`;
+      html += `<tr class="group-detail-row location-item-row" data-group="${groupId}" style="display:none"><td></td><td>${species}</td><td>${dateStr}</td><td>${observer}</td></tr>`;
     });
   });
   html += '</tbody></table></div>';
