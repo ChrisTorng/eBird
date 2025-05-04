@@ -16,6 +16,7 @@ async function fetchAndRender() {
     const observerDiv = parent.querySelector('.Chk-observer');
     const locationDiv = parent.querySelector('.Chk-location');
     if (speciesDiv && dateDiv && observerDiv && locationDiv) {
+    //   console.log(speciesDiv.innerHTML, dateDiv.innerHTML, observerDiv.innerHTML, locationDiv.innerHTML);
       records.push({
         species: speciesDiv.innerHTML,
         date: dateDiv.innerHTML,
@@ -97,7 +98,7 @@ function renderTable(title, records) {
   document.getElementById('main-title').innerText = `${title} (${rangeStr})`;
 
   // 新表格格式
-  let html = '<div class="table-wrap"><table><thead><tr><th>地點次數</th><th>地點</th><th>日期</th><th>鳥種數</th><th>鳥友名</th></tr></thead><tbody>';
+  let html = '<div class="table-wrap"><table><thead><tr><th>次數/地點</th><th>日期</th><th>鳥種數</th><th>鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
     // 取地點連結
     let locDiv = document.createElement('div');
@@ -111,25 +112,16 @@ function renderTable(title, records) {
       locDiv.appendChild(locA);
     }
     let locHtml = locA ? locDiv.innerHTML : g.loc;
-    html += `<tr class="group-row"><td>${g.count}</td><td colspan="4">${locHtml}</td></tr>`;
+    html += `<tr class="group-row"><td>${g.count}</td><td colspan="3">${locHtml}</td></tr>`;
     g.arr.forEach(r => {
       // 鳥種數
       let species = r.species.replace(/<a /, '<a target="_blank" class="species-link" ');
       // 日期
       const d = parseDate(r.date);
       let dateStr = d ? formatDate(d) : '';
-      // 鳥友名加連結
-      let observerDiv = document.createElement('div');
-      observerDiv.innerHTML = r.observer;
-      let observerA = observerDiv.querySelector('a');
-      if (observerA) {
-        observerA.setAttribute('target', '_blank');
-        observerA.classList.add('observer-link');
-        observerDiv.innerHTML = '';
-        observerDiv.appendChild(observerA);
-      }
-      let observer = observerA ? observerDiv.innerHTML : observerDiv.textContent.trim();
-      html += `<tr><td></td><td></td><td>${dateStr}</td><td>${species}</td><td>${observer}</td></tr>`;
+      // 鳥友名
+      let observer = r.observer.replace(/<a /, '<a target="_blank" class="species-link" ');
+      html += `<tr><td></td><td>${dateStr}</td><td>${species}</td><td>${observer}</td></tr>`;
     });
   });
   html += '</tbody></table></div>';

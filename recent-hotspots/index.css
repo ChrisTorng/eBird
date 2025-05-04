@@ -55,3 +55,14 @@ tr.group-row {
   color: #1976d2;
   text-decoration: underline;
 }
+
+/* for eBird site */
+.u-hideForLarge {
+  display: none;
+}
+.is-visuallyHidden {
+  display: none;
+}
+.Icon {
+  display: none;
+}
