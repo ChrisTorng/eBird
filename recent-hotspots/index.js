@@ -135,9 +135,9 @@ function renderTable(locationCode, records) {
     groupMap[loc].push(r);
   });
   // 排序: 依數量多到少，數量相同依最新時間
-  const groups = Object.entries(groupMap).map(([loc, arr]) => {
+  const groups = Object.entries(groupMap).map(([loc, arr], idx) => {
     arr.sort((a, b) => parseDate(b.date) - parseDate(a.date));
-    return { loc, count: arr.length, latest: parseDate(arr[0].date), arr };
+    return { loc, count: arr.length, latest: parseDate(arr[0].date), arr, idx };
   });
   groups.sort((a, b) => b.count - a.count || b.latest - a.latest);
 
@@ -151,9 +151,16 @@ function renderTable(locationCode, records) {
   });
   const rangeStr = minDate && maxDate ? `${formatDate(maxDate).split(' ')[0]}-${formatDate(minDate).split(' ')[0]}` : '';
 
+  // 展開/收合按鈕
+  const expandCollapseBtns = `
+    <button id="expand-all-btn" class="expand-collapse-btn">全部展開</button>
+    <button id="collapse-all-btn" class="expand-collapse-btn">全部收合</button>
+  `;
+
   // 標題（加上日期範圍）
   let html = '';
   html += `<h2 id="main-title">${regionName} (${rangeStr})</h2>`;
+  html += expandCollapseBtns;
 
   html += '<div class="table-wrap"><table><thead><tr><th>次數/地點</th><th>日期</th><th>鳥種數</th><th>鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
@@ -169,8 +176,10 @@ function renderTable(locationCode, records) {
       locDiv.appendChild(locA);
     }
     let locHtml = locA ? locDiv.innerHTML : g.loc;
-    html += `<tr class="group-row"><td>${g.count}</td><td colspan="3">${locHtml}</td></tr>`;
-    g.arr.forEach(r => {
+    // group id for toggle
+    const groupId = `group-${g.idx}`;
+    html += `<tr class="group-row" data-group="${groupId}"><td><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false">▶</button> ${g.count}</td><td colspan="3">${locHtml}</td></tr>`;
+    g.arr.forEach((r, i) => {
       // 鳥種數
       let species = r.species.replace(/<a /, '<a target="_blank" class="species-link" ');
       // 日期
@@ -178,15 +187,56 @@ function renderTable(locationCode, records) {
       let dateStr = d ? formatDate(d) : '';
       // 鳥友名
       let observer = r.observer.replace(/<a /, '<a target="_blank" class="species-link" ');
-      html += `<tr><td></td><td>${dateStr}</td><td>${species}</td><td>${observer}</td></tr>`;
+      html += `<tr class="group-detail-row" data-group="${groupId}" style="display:none"><td></td><td>${dateStr}</td><td>${species}</td><td>${observer}</td></tr>`;
     });
   });
   html += '</tbody></table></div>';
+  html += expandCollapseBtns;
   // 資料來源
   html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${locationCode}/recent-checklists" target="_blank">eBird 最新紀錄清單 - ${regionName}</a></div>`;
   // 只更新內容（不再加地區列，因 fetchAndRender 已處理）
   const area = document.getElementById('table-area');
   area.innerHTML = renderRegionLinks(locationCode) + html;
+
+  // 掛載展開/收合事件
+  setTimeout(() => {
+    // 單一地點展開/收合
+    document.querySelectorAll('.toggle-group-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const group = this.getAttribute('data-group');
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        document.querySelectorAll(`.group-detail-row[data-group="${group}"]`).forEach(row => {
+          row.style.display = expanded ? 'none' : '';
+        });
+        this.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        this.textContent = expanded ? '▶' : '▼';
+      });
+    });
+    // 全部展開
+    document.querySelectorAll('#expand-all-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.toggle-group-btn').forEach(tbtn => {
+          tbtn.setAttribute('aria-expanded', 'true');
+          tbtn.textContent = '▼';
+        });
+        document.querySelectorAll('.group-detail-row').forEach(row => {
+          row.style.display = '';
+        });
+      });
+    });
+    // 全部收合
+    document.querySelectorAll('#collapse-all-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.toggle-group-btn').forEach(tbtn => {
+          tbtn.setAttribute('aria-expanded', 'false');
+          tbtn.textContent = '▶';
+        });
+        document.querySelectorAll('.group-detail-row').forEach(row => {
+          row.style.display = 'none';
+        });
+      });
+    });
+  }, 0);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
