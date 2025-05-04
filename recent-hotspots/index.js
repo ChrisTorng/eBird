@@ -52,7 +52,7 @@ async function fetchAndRender(location) {
   const regionName = getRegionName(location);
   let html = '';
   html += renderRegionLinks(location);
-  html += `<h2 id="main-title">${regionName} eBird 熱門鳥點查詢</h2>`;
+  html += `<h2 id="main-title">${regionName} eBird 熱門鳥點查詢 - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
   html += '<div class="loading">載入中...</div>';
   html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${location}/recent-checklists" target="_blank">eBird 最新紀錄清單 - ${regionName}</a></div>`;
   area.innerHTML = html;
@@ -163,7 +163,7 @@ function renderTable(locationCode, records) {
 
   // 標題（加上日期範圍）
   let html = '';
-  html += `<h2 id="main-title">${pageTitle}</h2>`;
+  html += `<h2 id="main-title">${pageTitle} - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
   html += expandCollapseBtns;
 
   html += '<div class="table-wrap"><table><thead><tr><th>次數</th><th>鳥種</th><th>日期</th><th class="observer-cell">鳥友名</th></tr></thead><tbody>';
