@@ -7,7 +7,7 @@
 
 我想由 eBird 的 [最新紀錄清單](https://ebird.org/region/TW/recent-checklists) 找到最近幾天的熱門地點，故建立了 [eBird 最近熱門地點](https://e-bird-christorngs-projects.vercel.app/recent-hotspots/) 網頁。可以選擇台灣的指定縣市，它會抓最近兩百個紀錄清單，將相同地點之項目群組起來，方便檢視最近幾天最多人去的地點。
 
-此功能目前只能在本機開發環境使用，參考 [本機開發執行](https://github.com/ChrisTorng/eBird?tab=readme-ov-file#%E6%9C%AC%E6%A9%9F%E5%9F%B7%E8%A1%8C)。
+此功能目前只能在本機開發環境使用，參考 [本機開發執行](https://github.com/ChrisTorng/eBird?tab=readme-ov-file#%E6%9C%AC%E6%A9%9F%E9%96%8B%E7%99%BC%E5%9F%B7%E8%A1%8C)。
 
 ![](images\eBird-recent-hotspots.png)
 
