@@ -10,7 +10,18 @@
 </head>
 <body>
   <div class="container">
+    <span id="local-warning" style="display:none;">此功能目前只能在本機開發環境使用，請參考 <a href="https://github.com/ChrisTorng/eBird">GitHub 原始碼</a></span>
     <div id="table-area"></div>
   </div>
 </body>
 </html>
+
+<script>
+  // 僅在非本機環境顯示警告
+  (function() {
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '';
+    if (isLocal) {
+      document.getElementById('local-warning').style.display = '';
+    }
+  })();
+</script>
