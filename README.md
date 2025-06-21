@@ -25,6 +25,21 @@
 
 另推薦 [eBird Scripts](https://github.com/ChrisTorng/eBirdScripts)，它是一個 [Tampermonkey](https://www.tampermonkey.net/) 使用者腳本，用於增強 [eBird](https://ebird.org/) 網站的功能，包括改用台灣格式日期，熱門鳥點中新增「最近鳥種」和「最近紀錄」連結。
 
+## 本機執行
+
+```
+uv venv .venv
+./.venv/Scripts/Activate.ps1
+uv pip install -r requirements.txt
+uv pip install flask flask_cors requests markdown playwright
+python -m playwright install
+python index.py
+```
+
+開啟 VS Code Live Preview: http://localhost:3000/recent-hotspots/
+
+最近熱門鳥點功能，目前無法於 Vercel 中使用 Playwright，因此只能在本機開發環境中使用。
+
 ## 授權
 
 本專案採用 MIT 授權條款。

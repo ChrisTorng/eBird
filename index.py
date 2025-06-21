@@ -1,6 +1,11 @@
 # recent-hotspots/proxy_server.py
 from flask import Flask, request, Response, send_from_directory
 import requests
+import asyncio
+from flask import stream_with_context
+
+# Playwright 相關
+from playwright.sync_api import sync_playwright
 from flask_cors import CORS
 import markdown
 
@@ -95,8 +100,22 @@ def proxy():
     if not url or not url.startswith('https://ebird.org/'):
         return Response('Invalid URL', status=400)
     try:
-        resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
-        return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'text/html'))
+        # 用 Playwright headless Chromium 抓取渲染後的 HTML
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                locale='zh-TW',
+            )
+            page = context.new_page()
+            page.goto(url, wait_until='networkidle', timeout=30000)
+            # 等待可能的 JS 驗證跳轉
+            # 若有中間頁面，等待自動跳轉
+            # 最多等 5 秒
+            page.wait_for_timeout(5000)
+            html = page.content()
+            browser.close()
+        return Response(html, status=200, content_type='text/html; charset=utf-8')
     except Exception as ex:
         return Response(f'Error: {ex}', status=500)
 

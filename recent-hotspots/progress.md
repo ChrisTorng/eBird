@@ -34,3 +34,20 @@
 21. 目前測試還是一樣拉很寬並無改善，請再仔細檢查。或者是鳥友名佔滿剩下寬度，或者在鳥友名後再增加一不顯示的欄位?
     => 放棄
 22. 請將「鳥友名」佔滿剩餘全寬。另表格標題不可折行。
+
+2025/6/21 Agent/GPT-4.1:
+1. 請用 playwright MCP 為我檢查 http://127.0.0.1:3000/recent-hotspots/index.html?location=TW 對應於 ，它裡面下載的目標頁面似乎有發生重導向，可能是機器人檢查的機制，造成無法正確抓取內容。請詳細檢查原因並修正。
+2. 我在同一瀏覽器裡看目標網頁第一次有看到一個中間畫面，很快跳到目標頁面，之後都直接進入目標頁面，是正常的。那由 http://127.0.0.1:3000/recent-hotspots/index.html?location=TW 中的 js 抓取目標頁面時，是否也會沿用我正在用的 cookie/session? 一定要模擬的方法嗎?
+3. 為何 server 端的方式就可以通過? 它會如何模擬人類瀏覽器的行為?
+4. 現在不是已經有 實作 proxy 功能了嗎? 目前的問題還缺了什麼呢?
+5. 請改善 #file:index.py，讓它能夠正確抓取目標頁面內容。
+6. 我的 server 端將上傳 Vercel，可以安裝 Playwright 之類嗎? 若確實可以，請協助我執行需安裝指令，以及如何在 Vercel 上使用 Playwright 的方法，比如說更新 #file:vercel.json。
+7. 先不管 Vercel，我要先讓本機開發可以運作，請為我執行必須安裝設定指令。
+8. 請先確認目前的虛擬環境是 uv 建立的嗎?
+9. 請重新檢查 http://127.0.0.1:3000/recent-hotspots/index.html?location=TW 的執行結果，目前仍無法正常顯示內容。請檢查 #file:index.py 的實作，並修正問題。
+10. #terminalSelection
+11. 先前已傳給你，執行結果都沒有輸出任何東西。
+12. #terminalSelection 是否有可能是 uv?
+13. 有
+14. 再協助我安裝
+15. 如何執行 #file:index.py?
