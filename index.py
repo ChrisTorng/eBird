@@ -111,8 +111,12 @@ def proxy():
             page.goto(url, wait_until='networkidle', timeout=30000)
             # 等待可能的 JS 驗證跳轉
             # 若有中間頁面，等待自動跳轉
-            # 最多等 5 秒
-            page.wait_for_timeout(5000)
+            try:
+                # 以 eBird 主要內容區塊為例，通常有 <main> 或 id="main"
+                page.wait_for_selector('main, #main', timeout=5000)
+            except Exception:
+                # 若 5 秒內沒等到，直接繼續
+                pass
             html = page.content()
             browser.close()
         return Response(html, status=200, content_type='text/html; charset=utf-8')

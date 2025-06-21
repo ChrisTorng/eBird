@@ -52,3 +52,9 @@
 14. 再協助我安裝
 15. 如何執行 #file:index.py?
 16. 選取文字僅在非本機執行時顯示。
+17. pip install playwright
+python -m playwright install
+兩個差別是什麼?
+18. #file:index.py:112-117 請問等待五秒這個可以優化嗎? 如果目標網頁還沒下載完畢，page.content() 會等待完成嗎?
+19. 請為我實作最佳化等待機制。
+20. 

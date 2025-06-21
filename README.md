@@ -35,7 +35,6 @@
 uv venv .venv
 ./.venv/Scripts/Activate.ps1
 uv pip install -r requirements.txt
-uv pip install flask flask_cors requests markdown playwright
 python -m playwright install
 python index.py
 ```
