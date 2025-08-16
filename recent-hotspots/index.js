@@ -135,8 +135,26 @@ function renderTable(locationCode, records) {
   });
   // 排序: 依數量多到少，數量相同依最新時間
   const groups = Object.entries(groupMap).map(([loc, arr], idx) => {
+    // 依最新日期排序（同一地點內）
     arr.sort((a, b) => parseDate(b.date) - parseDate(a.date));
-    return { loc, count: arr.length, latest: parseDate(arr[0].date), arr, idx };
+    // 計算唯一鳥友（同名只算一次）
+    const observerSet = new Set();
+    arr.forEach(r => {
+      const div = document.createElement('div');
+      div.innerHTML = r.observer;
+      // 可能是 <a> 包裹，也保留非 a 的純文字情況
+      const links = div.querySelectorAll('a');
+      if (links.length) {
+        links.forEach(a => {
+          const name = (a.textContent || '').trim();
+          if (name) observerSet.add(name);
+        });
+      } else {
+        const name = (div.textContent || '').trim();
+        if (name) observerSet.add(name);
+      }
+    });
+    return { loc, count: arr.length, observerCount: observerSet.size, latest: parseDate(arr[0].date), arr, idx };
   });
   groups.sort((a, b) => b.count - a.count || b.latest - a.latest);
 
@@ -166,7 +184,7 @@ function renderTable(locationCode, records) {
   html += `<h2 id="main-title">${pageTitle} - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
   html += expandCollapseBtns;
 
-  html += '<div class="table-wrap"><table><thead><tr><th>次數</th><th>鳥種</th><th>日期</th><th class="observer-cell">鳥友名</th></tr></thead><tbody>';
+  html += '<div class="table-wrap"><table><thead><tr><th>清單數/人數</th><th>鳥種</th><th>日期</th><th class="observer-cell">鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
     // 取地點連結
     let locDiv = document.createElement('div');
@@ -183,7 +201,7 @@ function renderTable(locationCode, records) {
     let locHtml = locA ? locDiv.innerHTML : g.loc;
     // group id for toggle
     const groupId = `group-${g.idx}`;
-    html += `<tr class="group-row" data-group="${groupId}"><td class="count-cell"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false">▶</button> ${g.count}</td><td colspan="3">${locHtml}</td></tr>`;
+  html += `<tr class="group-row" data-group="${groupId}"><td class="count-cell"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false">▶</button> ${g.count}/${g.observerCount}</td><td colspan="3">${locHtml}</td></tr>`;
     g.arr.forEach((r, i) => {
       // 鳥種數
       let species = r.species.replace(/<a /, '<a target="_blank" class="species-link" ');

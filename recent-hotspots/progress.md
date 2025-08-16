@@ -57,4 +57,6 @@ python -m playwright install
 兩個差別是什麼?
 18. #file:index.py:112-117 請問等待五秒這個可以優化嗎? 如果目標網頁還沒下載完畢，page.content() 會等待完成嗎?
 19. 請為我實作最佳化等待機制。
-20. 
+
+2025/8/16 GPT-5:
+20. 我要在 ${g.count} 之後，增加該地點的鳥友人數，相同鳥友計為一次，顯示為 `${g.count}/${g.observerCount}`。
