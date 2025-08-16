@@ -60,3 +60,4 @@ python -m playwright install
 
 2025/8/16 GPT-5:
 20. 我要在 ${g.count} 之後，增加該地點的鳥友人數，相同鳥友計為一次，顯示為 `${g.count}/${g.observerCount}`。
+21. 在地名顯示文字之前，我要顯示該地點最近一天清單紀錄之日期，該日有幾筆紀錄，該日所有紀錄之平均鳥種數量，顯示為 `${latestDate} ${latestSpeciesCount}/${latestCount}`，並且在各資料顯示文字上，增加 tooltip 以方便了解各個值的意義。

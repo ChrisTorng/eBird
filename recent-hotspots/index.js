@@ -134,6 +134,15 @@ function renderTable(locationCode, records) {
     groupMap[loc].push(r);
   });
   // 排序: 依數量多到少，數量相同依最新時間
+  // 解析鳥種數字
+  function extractSpeciesNumber(speciesHtml) {
+    const div = document.createElement('div');
+    div.innerHTML = speciesHtml;
+    const text = (div.textContent || '').trim();
+    const m = text.match(/(\d+)/); // 擷取第一個數字
+    return m ? parseInt(m[1], 10) : null;
+  }
+
   const groups = Object.entries(groupMap).map(([loc, arr], idx) => {
     // 依最新日期排序（同一地點內）
     arr.sort((a, b) => parseDate(b.date) - parseDate(a.date));
@@ -154,7 +163,26 @@ function renderTable(locationCode, records) {
         if (name) observerSet.add(name);
       }
     });
-    return { loc, count: arr.length, observerCount: observerSet.size, latest: parseDate(arr[0].date), arr, idx };
+    // 最近一天（依最新清單日期判斷的日）統計
+    const latestDateObj = parseDate(arr[0].date);
+    let latestDateStr = '';
+    let latestCount = 0;
+    let latestSpeciesAvg = 0;
+    if (latestDateObj) {
+      latestDateStr = `${latestDateObj.getMonth()+1}/${latestDateObj.getDate().toString().padStart(2,'0')}`;
+      const sameDay = arr.filter(r => {
+        const d = parseDate(r.date);
+        return d && d.getFullYear() === latestDateObj.getFullYear() && d.getMonth() === latestDateObj.getMonth() && d.getDate() === latestDateObj.getDate();
+      });
+      latestCount = sameDay.length;
+      let sum = 0, n = 0;
+      sameDay.forEach(r => {
+        const num = extractSpeciesNumber(r.species);
+        if (num != null) { sum += num; n++; }
+      });
+      latestSpeciesAvg = n ? Math.round(sum / n) : 0;
+    }
+    return { loc, count: arr.length, observerCount: observerSet.size, latest: parseDate(arr[0].date), latestDateStr, latestCount, latestSpeciesAvg, arr, idx };
   });
   groups.sort((a, b) => b.count - a.count || b.latest - a.latest);
 
@@ -184,7 +212,7 @@ function renderTable(locationCode, records) {
   html += `<h2 id="main-title">${pageTitle} - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
   html += expandCollapseBtns;
 
-  html += '<div class="table-wrap"><table><thead><tr><th>清單數/人數</th><th>鳥種</th><th>日期</th><th class="observer-cell">鳥友名</th></tr></thead><tbody>';
+  html += '<div class="table-wrap"><table><thead><tr><th title="總清單數 / 唯一鳥友人數">清單/人</th><th title="清單中的鳥種數" >鳥種</th><th title="清單時間 (月/日 時:分)">日期</th><th class="observer-cell" title="清單提交者">鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
     // 取地點連結
     let locDiv = document.createElement('div');
@@ -201,7 +229,10 @@ function renderTable(locationCode, records) {
     let locHtml = locA ? locDiv.innerHTML : g.loc;
     // group id for toggle
     const groupId = `group-${g.idx}`;
-  html += `<tr class="group-row" data-group="${groupId}"><td class="count-cell"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false">▶</button> ${g.count}/${g.observerCount}</td><td colspan="3">${locHtml}</td></tr>`;
+  const summaryTooltip = `最近一天(${g.latestDateStr})：平均鳥種數 ${g.latestSpeciesAvg}，清單數 ${g.latestCount}`;
+  const countTooltip = `總清單數 ${g.count} / 唯一鳥友 ${g.observerCount}`;
+  const latestDayDisplay = g.latestDateStr ? `${g.latestDateStr} ${g.latestSpeciesAvg}/${g.latestCount}` : '';
+  html += `<tr class="group-row" data-group="${groupId}"><td class="count-cell" title="${countTooltip}"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false" title="展開/收合">▶</button> ${g.count}/${g.observerCount}</td><td colspan="3"><span class="latest-day" title="${summaryTooltip}">${latestDayDisplay}</span> ${locHtml}</td></tr>`;
     g.arr.forEach((r, i) => {
       // 鳥種數
       let species = r.species.replace(/<a /, '<a target="_blank" class="species-link" ');
