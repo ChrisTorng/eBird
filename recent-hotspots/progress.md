@@ -62,3 +62,17 @@ python -m playwright install
 20. 我要在 ${g.count} 之後，增加該地點的鳥友人數，相同鳥友計為一次，顯示為 `${g.count}/${g.observerCount}`。
 21. 在地名顯示文字之前，我要顯示該地點最近一天清單紀錄之日期，該日有幾筆紀錄，該日所有紀錄之平均鳥種數量，顯示為 `${latestDate} ${latestSpeciesCount}/${latestCount}`，並且在各資料顯示文字上，增加 tooltip 以方便了解各個值的意義。
 22. "最近日期 平均鳥種/人" 一欄我要分為 "最近日期" "平均鳥種/人" 兩欄，資料內容一樣都要置中。
+
+23. 我要增加 Windows 的 `recent-hotspots.cmd`，以及適用 MacOS/Linux 的指令，讓我可以方便地在本機執行
+```
+./.venv/Scripts/Activate.ps1
+python index.py
+```
+然後開啟 http://localhost:5000/recent-hotspots/ 預設瀏覽器。
+24. `recent-hotspots.cmd` 有中文編碼問題，請修正:
+[INFO] 蝣箄??訾?憟辣 (uv pip install -r requirements.txt
+Audited 17 packages in 6ms
+<< was unexpected at this time.
+26. 我要假定使用者已經手動安裝測試完畢，我要以上執行腳本僅僅啟動虛擬環境及執行 index.py 還有開啟瀏覽器的動作就好。
+27. 目前目標網址支援以 http://localhost:5000/recent-hotspots/?location=TW-TPQ 格式指定地點。我要讓以上腳本支援選擇性參數，若有指定第一個參數地點字串，則在啟動瀏覽器時帶上該參數，若未指定則仍依原預設網址。
+28. 不需檢查字串是否合法，只要有帶參數就直接使用。

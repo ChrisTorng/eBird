@@ -22,15 +22,65 @@
 
 最近熱門鳥點需要執行於本機開發執行環境，因為需要使用 Playwright 來抓取 eBird 網站的內容。
 
+### 第一次環境設定 (所有平台)
+
 ```
 uv venv .venv
-./.venv/Scripts/Activate.ps1
+./.venv/Scripts/Activate.ps1   # Windows PowerShell
 uv pip install -r requirements.txt
 python -m playwright install
+```
+
+### 快速啟動 (啟動腳本)
+
+以下腳本「僅」負責：
+1. 啟動既有虛擬環境 `.venv`
+2. 執行 `python index.py`
+3. 等待服務就緒並開啟瀏覽器 `http://localhost:5000/recent-hotspots/`
+
+初次安裝 (建立 venv / 安裝套件 / Playwright) 請先依「第一次環境設定」手動完成，腳本不再自動安裝，避免覆寫或拖慢啟動。
+
+#### Windows (PowerShell / CMD)
+
+```
+./recent-hotspots.cmd
+```
+
+指定地點 (例如新北市 `TW-TPQ`)：
+
+```
+./recent-hotspots.cmd TW-TPQ
+```
+
+#### Mac / Linux
+
+先賦予執行權限 (只需一次)：
+
+```
+chmod +x recent-hotspots.sh
+```
+
+執行：
+
+```
+./recent-hotspots.sh
+```
+
+指定地點：
+
+```
+./recent-hotspots.sh TW-TPQ
+```
+
+### 手動啟動 (不使用腳本)
+
+```
+./.venv/Scripts/Activate.ps1   # Windows (PowerShell)
+# 或 source .venv/bin/activate # Mac / Linux
 python index.py
 ```
 
-開啟 VS Code Live Preview: [http://localhost:5000/recent-hotspots/](http://localhost:5000/recent-hotspots/)
+啟動後瀏覽： [http://localhost:5000/recent-hotspots/](http://localhost:5000/recent-hotspots/)
 
 ## 原始碼
 
