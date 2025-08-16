@@ -7,7 +7,7 @@
 
 我想由 eBird 的 [最新紀錄清單](https://ebird.org/region/TW/recent-checklists) 找到最近幾天的熱門地點，故建立了 [eBird 最近熱門地點](https://e-bird-christorngs-projects.vercel.app/recent-hotspots/) 網頁。可以選擇台灣的指定縣市，它會抓最近兩百個紀錄清單，將相同地點之項目群組起來，方便檢視最近幾天最多人去的地點。
 
-此功能目前只能在本機開發環境使用，參考 [本機開發執行](https://github.com/ChrisTorng/eBird#%E6%9C%AC%E6%A9%9F%E9%96%8B%E7%99%BC%E5%9F%B7%E8%A1%8C)。
+此功能目前只能在本機開發環境使用，參考 [本機開發執行](https://github.com/ChrisTorng/*eBird*#%E6%9C%AC%E6%A9%9F%E9%96%8B%E7%99%BC%E5%9F%B7%E8%A1%8C)。
 
 ![](images/eBird-recent-hotspots.png)
 
@@ -20,25 +20,35 @@
 
 ## 本機開發執行
 
-最近熱門鳥點需要執行於本機開發執行環境，因為需要使用 Playwright 來抓取 eBird 網站的內容。
+「最近熱門鳥點」需要執行於本機開發執行環境，因為需要使用 Playwright 來抓取 eBird 網站的內容。
 
-### 第一次環境設定 (所有平台)
+### 第一次安裝啟動
+
+請參考 [uv - Installation](https://github.com/astral-sh/uv#installation) 先安裝 `uv` 環境。再依下述第一次安裝啟動步驟：
 
 ```
 uv venv .venv
-./.venv/Scripts/Activate.ps1   # Windows PowerShell
+
+# 啟動虛擬環境，以下三擇一
+# .\.venv\Scripts\Activate.ps1 # Windows PowerShell
+# .\.venv\Scripts\Activate.bat # Windows Command Prompt
+# source .venv/bin/activate    # Mac / Linux
+
 uv pip install -r requirements.txt
 python -m playwright install
+python index.py
 ```
 
-### 快速啟動 (啟動腳本)
+啟動後瀏覽： [http://localhost:5000/recent-hotspots/](http://localhost:5000/recent-hotspots/)
 
-以下腳本「僅」負責：
+### 快速啟動
+
+以下腳本負責：
 1. 啟動既有虛擬環境 `.venv`
 2. 執行 `python index.py`
 3. 等待服務就緒並開啟瀏覽器 `http://localhost:5000/recent-hotspots/`
 
-初次安裝 (建立 venv / 安裝套件 / Playwright) 請先依「第一次環境設定」手動完成，腳本不再自動安裝，避免覆寫或拖慢啟動。
+初次安裝 (建立 venv / 安裝套件 / Playwright) 請先依「第一次安裝啟動」手動完成，腳本不再自動安裝，避免覆寫或拖慢啟動。
 
 #### Windows (PowerShell / CMD)
 
@@ -75,8 +85,11 @@ chmod +x recent-hotspots.sh
 ### 手動啟動 (不使用腳本)
 
 ```
-./.venv/Scripts/Activate.ps1   # Windows (PowerShell)
-# 或 source .venv/bin/activate # Mac / Linux
+# 啟動虛擬環境，以下三擇一
+# .\.venv\Scripts\Activate.ps1 # Windows PowerShell
+# .\.venv\Scripts\Activate.bat # Windows Command Prompt
+# source .venv/bin/activate    # Mac / Linux
+
 python index.py
 ```
 
