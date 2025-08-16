@@ -212,7 +212,14 @@ function renderTable(locationCode, records) {
   html += `<h2 id="main-title">${pageTitle} - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
   html += expandCollapseBtns;
 
-  html += '<div class="table-wrap"><table><thead><tr><th style="text-align:right" title="總紀錄數 / 唯一鳥友人數">紀錄/人</th><th title="最近紀錄日期 該日所有紀錄之平均鳥種數量/該日紀錄數" >最近日期 平均鳥種/人</th><th title="紀錄中的鳥種數" >鳥種</th><th title="紀錄時間 (月/日 時:分)">日期</th><th class="observer-cell" title="紀錄提交者">鳥友名</th></tr></thead><tbody>';
+  html += '<div class="table-wrap"><table><thead><tr>'+
+    '<th style="text-align:right" title="總紀錄數 / 唯一鳥友人數">紀錄/人</th>'+
+    '<th style="text-align:center" title="該地點最近一天的日期">最近日期</th>'+
+    '<th style="text-align:center" title="最近一天平均鳥種數 / 當日紀錄數">平均鳥種/紀錄</th>'+
+    '<th title="單筆紀錄的鳥種數" >鳥種</th>'+
+    '<th title="單筆紀錄時間 (月/日 時:分)">日期</th>'+
+    '<th class="observer-cell" title="紀錄提交者">鳥友名</th>'+
+    '</tr></thead><tbody>';
   groups.forEach(g => {
     // 取地點連結
     let locDiv = document.createElement('div');
@@ -229,10 +236,15 @@ function renderTable(locationCode, records) {
     let locHtml = locA ? locDiv.innerHTML : g.loc;
     // group id for toggle
     const groupId = `group-${g.idx}`;
-  const summaryTooltip = `最近一天(${g.latestDateStr})：平均鳥種數 ${g.latestSpeciesAvg}，紀錄數 ${g.latestCount}`;
+  const dateTooltip = g.latestDateStr ? `最近一天日期：${g.latestDateStr}（共有 ${g.latestCount} 筆紀錄）` : '無最近日期資料';
+  const avgTooltip = g.latestDateStr ? `最近一天平均鳥種數：${g.latestSpeciesAvg} / 當日紀錄數：${g.latestCount}` : '無平均資料';
   const countTooltip = `總紀錄數 ${g.count} / 唯一鳥友 ${g.observerCount}`;
-  const latestDayDisplay = g.latestDateStr ? `${g.latestDateStr}&nbsp;&nbsp;&nbsp;&nbsp;${g.latestSpeciesAvg}/${g.latestCount}` : '';
-  html += `<tr class="group-row" data-group="${groupId}"><td class="count-cell" title="${countTooltip}"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false" title="展開/收合">▶</button> ${g.count}/${g.observerCount}</td><td style="text-align:center"><span class="latest-day" title="${summaryTooltip}">${latestDayDisplay}</span></td><td colspan="3">${locHtml}</td></tr>`;
+  html += `<tr class="group-row" data-group="${groupId}">`+
+    `<td class="count-cell" title="${countTooltip}"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false" title="展開/收合">▶</button> ${g.count}/${g.observerCount}</td>`+
+    `<td style="text-align:center" title="${dateTooltip}">${g.latestDateStr || ''}</td>`+
+    `<td style="text-align:center" title="${avgTooltip}">${g.latestDateStr ? g.latestSpeciesAvg + '/' + g.latestCount : ''}</td>`+
+    `<td colspan="3">${locHtml}</td>`+
+    `</tr>`;
     g.arr.forEach((r, i) => {
       // 鳥種數
       let species = r.species.replace(/<a /, '<a target="_blank" class="species-link" ');
@@ -241,7 +253,12 @@ function renderTable(locationCode, records) {
       let dateStr = d ? formatDate(d) : '';
       // 鳥友名
       let observer = r.observer.replace(/<a /, '<a target="_blank" class="species-link" ');
-      html += `<tr class="group-detail-row location-item-row" data-group="${groupId}" style="display:none"><td colspan="2"></td><td>${species}</td><td>${dateStr}</td><td class="observer-cell">${observer}</td></tr>`;
+      html += `<tr class="group-detail-row location-item-row" data-group="${groupId}" style="display:none">`+
+        `<td></td><td></td><td></td>`+ // 對齊前 3 欄（紀錄/人、最近日期、平均鳥種/紀錄）
+        `<td>${species}</td>`+
+        `<td>${dateStr}</td>`+
+        `<td class="observer-cell">${observer}</td>`+
+        `</tr>`;
     });
   });
   html += '</tbody></table></div>';
