@@ -54,7 +54,7 @@ async function fetchAndRender(location) {
   html += renderRegionLinks(location);
   html += `<h2 id="main-title">${regionName} eBird 熱門鳥點查詢 - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
   html += '<div class="loading">載入中...</div>';
-  html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${location}/recent-checklists" target="_blank">eBird 最新紀錄清單 - ${regionName}</a></div>`;
+  html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${location}/recent-checklists" target="_blank">eBird 最新紀錄紀錄 - ${regionName}</a></div>`;
   area.innerHTML = html;
   // 使用本機 proxy server 解決 CORS 問題
   const url = `../proxy?url=${encodeURIComponent(`https://ebird.org/region/${location}/recent-checklists`)}`;
@@ -163,7 +163,7 @@ function renderTable(locationCode, records) {
         if (name) observerSet.add(name);
       }
     });
-    // 最近一天（依最新清單日期判斷的日）統計
+    // 最近一天（依最新紀錄日期判斷的日）統計
     const latestDateObj = parseDate(arr[0].date);
     let latestDateStr = '';
     let latestCount = 0;
@@ -195,7 +195,7 @@ function renderTable(locationCode, records) {
     if (!minDate || d < minDate) minDate = d;
     if (!maxDate || d > maxDate) maxDate = d;
   });
-  const rangeStr = minDate && maxDate ? `${maxDate.getFullYear()}/${maxDate.getMonth()+1}/${maxDate.getDate()}-${minDate.getMonth()+1}/${minDate.getDate()}` : '';
+  const rangeStr = minDate && maxDate ? `${maxDate.getFullYear()}/${minDate.getMonth()+1}/${minDate.getDate()}-${maxDate.getMonth()+1}/${maxDate.getDate()}` : '';
 
   // 組合標題
   const pageTitle = `${regionName}${rangeStr ? ' (' + rangeStr + ')' : ''} eBird 最近熱門地點`;
@@ -212,7 +212,7 @@ function renderTable(locationCode, records) {
   html += `<h2 id="main-title">${pageTitle} - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
   html += expandCollapseBtns;
 
-  html += '<div class="table-wrap"><table><thead><tr><th title="總清單數 / 唯一鳥友人數">清單/人</th><th title="清單中的鳥種數" >鳥種</th><th title="清單時間 (月/日 時:分)">日期</th><th class="observer-cell" title="清單提交者">鳥友名</th></tr></thead><tbody>';
+  html += '<div class="table-wrap"><table><thead><tr><th style="text-align:right" title="總紀錄數 / 唯一鳥友人數">紀錄/人</th><th title="最近紀錄日期 該日所有紀錄之平均鳥種數量/該日紀錄數" >最近日期 平均鳥種/人</th><th title="紀錄中的鳥種數" >鳥種</th><th title="紀錄時間 (月/日 時:分)">日期</th><th class="observer-cell" title="紀錄提交者">鳥友名</th></tr></thead><tbody>';
   groups.forEach(g => {
     // 取地點連結
     let locDiv = document.createElement('div');
@@ -229,10 +229,10 @@ function renderTable(locationCode, records) {
     let locHtml = locA ? locDiv.innerHTML : g.loc;
     // group id for toggle
     const groupId = `group-${g.idx}`;
-  const summaryTooltip = `最近一天(${g.latestDateStr})：平均鳥種數 ${g.latestSpeciesAvg}，清單數 ${g.latestCount}`;
-  const countTooltip = `總清單數 ${g.count} / 唯一鳥友 ${g.observerCount}`;
-  const latestDayDisplay = g.latestDateStr ? `${g.latestDateStr} ${g.latestSpeciesAvg}/${g.latestCount}` : '';
-  html += `<tr class="group-row" data-group="${groupId}"><td class="count-cell" title="${countTooltip}"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false" title="展開/收合">▶</button> ${g.count}/${g.observerCount}</td><td colspan="3"><span class="latest-day" title="${summaryTooltip}">${latestDayDisplay}</span> ${locHtml}</td></tr>`;
+  const summaryTooltip = `最近一天(${g.latestDateStr})：平均鳥種數 ${g.latestSpeciesAvg}，紀錄數 ${g.latestCount}`;
+  const countTooltip = `總紀錄數 ${g.count} / 唯一鳥友 ${g.observerCount}`;
+  const latestDayDisplay = g.latestDateStr ? `${g.latestDateStr}&nbsp;&nbsp;&nbsp;&nbsp;${g.latestSpeciesAvg}/${g.latestCount}` : '';
+  html += `<tr class="group-row" data-group="${groupId}"><td class="count-cell" title="${countTooltip}"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false" title="展開/收合">▶</button> ${g.count}/${g.observerCount}</td><td style="text-align:center"><span class="latest-day" title="${summaryTooltip}">${latestDayDisplay}</span></td><td colspan="3">${locHtml}</td></tr>`;
     g.arr.forEach((r, i) => {
       // 鳥種數
       let species = r.species.replace(/<a /, '<a target="_blank" class="species-link" ');
@@ -241,13 +241,13 @@ function renderTable(locationCode, records) {
       let dateStr = d ? formatDate(d) : '';
       // 鳥友名
       let observer = r.observer.replace(/<a /, '<a target="_blank" class="species-link" ');
-      html += `<tr class="group-detail-row location-item-row" data-group="${groupId}" style="display:none"><td></td><td>${species}</td><td>${dateStr}</td><td class="observer-cell">${observer}</td></tr>`;
+      html += `<tr class="group-detail-row location-item-row" data-group="${groupId}" style="display:none"><td colspan="2"></td><td>${species}</td><td>${dateStr}</td><td class="observer-cell">${observer}</td></tr>`;
     });
   });
   html += '</tbody></table></div>';
   html += expandCollapseBtns;
   // 資料來源
-  html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${locationCode}/recent-checklists" target="_blank">eBird 最新紀錄清單 - ${regionName}</a></div>`;
+  html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${locationCode}/recent-checklists" target="_blank">eBird 最新紀錄紀錄 - ${regionName}</a></div>`;
   // 只更新內容（不再加地區列，因 fetchAndRender 已處理）
   const area = document.getElementById('table-area');
   area.innerHTML = renderRegionLinks(locationCode) + html;
