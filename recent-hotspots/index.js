@@ -52,7 +52,7 @@ async function fetchAndRender(location) {
   const regionName = getRegionName(location);
   let html = '';
   html += renderRegionLinks(location);
-  html += `<h2 id="main-title">${regionName} eBird 熱門鳥點查詢 - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
+  html += `<h2 id="main-title"><a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a> - ${regionName} eBird 熱門鳥點查詢</h2>`;
   html += '<div class="loading">載入中...</div>';
   html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${location}/recent-checklists" target="_blank">eBird 最新紀錄紀錄 - ${regionName}</a></div>`;
   area.innerHTML = html;
@@ -209,13 +209,13 @@ function renderTable(locationCode, records) {
 
   // 標題（加上日期範圍）
   let html = '';
-  html += `<h2 id="main-title">${pageTitle} - <a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a></h2>`;
+  html += `<h2 id="main-title"><a href="https://e-bird-christorngs-projects.vercel.app/" target="_blank">eBird 工具</a> - ${pageTitle}</h2>`;
   html += expandCollapseBtns;
 
   html += '<div class="table-wrap"><table><thead><tr>'+
-    '<th style="text-align:right" title="總紀錄數 / 唯一鳥友人數">紀錄/人</th>'+
+    '<th style="text-align:right" title="總紀錄數 / 唯一鳥友人數">紀錄 / 人</th>'+
     '<th style="text-align:center" title="該地點最近一天的日期">最近日期</th>'+
-    '<th style="text-align:center" title="最近一天平均鳥種數 / 當日紀錄數">平均鳥種/紀錄</th>'+
+    '<th style="text-align:center" title="最近一天平均鳥種數 / 當日紀錄數">平均鳥種 / 紀錄</th>'+
     '<th title="單筆紀錄的鳥種數" >鳥種</th>'+
     '<th title="單筆紀錄時間 (月/日 時:分)">日期</th>'+
     '<th class="observer-cell" title="紀錄提交者">鳥友名</th>'+
@@ -240,9 +240,9 @@ function renderTable(locationCode, records) {
   const avgTooltip = g.latestDateStr ? `最近一天平均鳥種數：${g.latestSpeciesAvg} / 當日紀錄數：${g.latestCount}` : '無平均資料';
   const countTooltip = `總紀錄數 ${g.count} / 唯一鳥友 ${g.observerCount}`;
   html += `<tr class="group-row" data-group="${groupId}">`+
-    `<td class="count-cell" title="${countTooltip}"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false" title="展開/收合">▶</button> ${g.count}/${g.observerCount}</td>`+
+    `<td class="count-cell" title="${countTooltip}"><button class="toggle-group-btn" data-group="${groupId}" aria-expanded="false" title="展開/收合">▶</button> ${g.count} / ${g.observerCount}</td>`+
     `<td style="text-align:center" title="${dateTooltip}">${g.latestDateStr || ''}</td>`+
-    `<td style="text-align:center" title="${avgTooltip}">${g.latestDateStr ? g.latestSpeciesAvg + '/' + g.latestCount : ''}</td>`+
+    `<td style="text-align:center" title="${avgTooltip}">${g.latestDateStr ? g.latestSpeciesAvg + ' / ' + g.latestCount : ''}</td>`+
     `<td colspan="3">${locHtml}</td>`+
     `</tr>`;
     g.arr.forEach((r, i) => {
