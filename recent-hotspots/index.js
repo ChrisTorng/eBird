@@ -173,6 +173,7 @@ function renderTable(locationCode, records) {
     locDiv.innerHTML = g.arr[0].location;
     let locA = locDiv.querySelector('a');
     if (locA) {
+      locA.href += '/bird-list?yr=curM';
       locA.setAttribute('target', '_blank');
       locA.classList.add('location-link');
       // 只保留 a 標籤
