@@ -226,10 +226,16 @@ function getRecords(source) {
     for (const record of records) {
         const lastRecord = mergedRecords[mergedRecords.length - 1];
         if (lastRecord && isMergeable(lastRecord, record)) {
-            lastRecord.reporter += `, <a href="${record.recordUrl}" target="_blank">${record.reporter}</a>`;
+            lastRecord.reporters.push(...record.reporters);
         } else {
             mergedRecords.push(record);
         }
+    }
+
+    for (const record of mergedRecords) {
+        sortReporters(record.reporters);
+        record.recordUrl = record.reporters[0]?.recordUrl || record.recordUrl;
+        record.reporter = buildReporterHtml(record.reporters);
     }
 
     return mergedRecords;
@@ -245,6 +251,37 @@ function isMergeable(record1, record2) {
         record1.videos === record2.videos &&
         record1.photos === record2.photos &&
         record1.comment === record2.comment;
+}
+
+function sortReporters(reporters) {
+    if (!reporters) {
+        return;
+    }
+
+    reporters.sort((reporter1, reporter2) => {
+        const nameCompare = reporter1.name.localeCompare(reporter2.name);
+        if (nameCompare !== 0) {
+            return nameCompare;
+        }
+        return reporter1.recordUrl.localeCompare(reporter2.recordUrl);
+    });
+}
+
+function buildReporterHtml(reporters) {
+    if (!reporters || reporters.length === 0) {
+        return '';
+    }
+
+    const [first, ...others] = reporters;
+    const othersHtml = others.map(reporter =>
+        `<a href="${reporter.recordUrl}" target="_blank">${reporter.name}</a>`
+    ).join(', ');
+
+    if (!othersHtml) {
+        return first.name;
+    }
+
+    return `${first.name}, ${othersHtml}`;
 }
 
 function truncateOthers(source) {
@@ -357,7 +394,10 @@ function getRecord(recordText) {
         name,
         confirmed,
         date,
-        reporter,
+        reporters: [{
+            name: reporter,
+            recordUrl
+        }],
         fullPlace,
         place,
         mapUrl,
