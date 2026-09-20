@@ -16,12 +16,13 @@ REM 啟動虛擬環境
 CALL .venv\Scripts\activate.bat || goto :error
 
 REM 啟動伺服器 (背景執行)
-START "recent-hotspots" cmd /c python index.py
+>nul 2>&1 (powershell -NoLogo -NoProfile -Command "try { $r = iwr -UseBasicParsing http://127.0.0.1:5000/recent-hotspots/ -Method Head -TimeoutSec 1; exit 0 } catch { exit 1 }") && goto :open
+powershell -NoLogo -NoProfile -Command "Start-Process -FilePath '.venv\Scripts\python.exe' -ArgumentList 'index.py' -WorkingDirectory (Get-Location).Path -WindowStyle Hidden -RedirectStandardOutput 'local-server.log' -RedirectStandardError 'local-server-error.log'"
 
-REM 等待服務啟動 (最多 12 秒)
+REM 等待服務啟動 (最多 24 次)
 SET /A retries=24
 :waitloop
->nul 2>&1 (powershell -NoLogo -NoProfile -Command "try { $r = iwr -UseBasicParsing http://127.0.0.1:5000/recent-hotspots/ -Method Head -TimeoutSec 1 } catch {}") && goto :open
+>nul 2>&1 (powershell -NoLogo -NoProfile -Command "try { $r = iwr -UseBasicParsing http://127.0.0.1:5000/recent-hotspots/ -Method Head -TimeoutSec 1; exit 0 } catch { exit 1 }") && goto :open
 PING 127.0.0.1 -n 2 >NUL
 SET /A retries-=1
 IF !retries! GTR 0 GOTO :waitloop

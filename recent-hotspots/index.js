@@ -60,6 +60,9 @@ async function fetchAndRender(location) {
   const url = `../proxy?url=${encodeURIComponent(`https://ebird.org/region/${location}/recent-checklists`)}`;
   const htmlText = await fetchHtml(url);
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+  if (!doc.querySelector('.RecentChecklists')) {
+    throw new Error('eBird 未回傳紀錄清單，可能仍在驗證或頁面格式已變更。請稍後重試。');
+  }
   const rows = Array.from(doc.querySelectorAll('.RecentChecklists .Chk-species'));
   const records = [];
   rows.forEach(speciesDiv => {
@@ -67,7 +70,10 @@ async function fetchAndRender(location) {
     const dateDiv = parent.querySelector('.Chk-date');
     const observerDiv = parent.querySelector('.Chk-observer');
     const locationDiv = parent.querySelector('.Chk-location');
-    if (speciesDiv && dateDiv && observerDiv && locationDiv) {
+    if (speciesDiv && dateDiv?.querySelector('time') && observerDiv && locationDiv) {
+      parent.querySelectorAll('a[href^="/"]').forEach(a => {
+        a.href = new URL(a.getAttribute('href'), 'https://ebird.org').href;
+      });
       records.push({
         species: speciesDiv.innerHTML,
         date: dateDiv.innerHTML,
@@ -87,7 +93,9 @@ function renderLocationSelector(currentCode) {
 async function fetchHtml(url) {
   // 若 CORS 問題，請改用 server 端 proxy
   const res = await fetch(url);
-  return await res.text();
+  const text = await res.text();
+  if (!res.ok) throw new Error(text.startsWith('<') ? `載入失敗（HTTP ${res.status}），請稍後重試。` : text);
+  return text;
 }
 
 function parseLocationName(locationHtml) {
@@ -104,8 +112,8 @@ function parseDate(dateHtml) {
   div.innerHTML = dateHtml;
   const time = div.querySelector('time');
   if (time && time.getAttribute('datetime')) {
-    const d = new Date(time.getAttribute('datetime').replace(/-/g, '/'));
-    return d;
+    const d = new Date(time.getAttribute('datetime').replace(' ', 'T'));
+    return Number.isNaN(d.getTime()) ? null : d;
   }
   return null;
 }
@@ -127,7 +135,7 @@ function renderTable(locationCode, records) {
     return loc !== regionName && loc !== '' && loc !== 'Location';
   });
   // 依地點分組
-  const groupMap = {};
+  const groupMap = Object.create(null);
   filtered.forEach(r => {
     const loc = parseLocationName(r.location);
     if (!groupMap[loc]) groupMap[loc] = [];
@@ -233,7 +241,7 @@ function renderTable(locationCode, records) {
       locDiv.innerHTML = '';
       locDiv.appendChild(locA);
     }
-    let locHtml = locA ? locDiv.innerHTML : g.loc;
+    let locHtml = locDiv.innerHTML;
     // group id for toggle
     const groupId = `group-${g.idx}`;
   const dateTooltip = g.latestDateStr ? `最近一天日期：${g.latestDateStr}（共有 ${g.latestCount} 筆紀錄）` : '無最近日期資料';
@@ -263,6 +271,8 @@ function renderTable(locationCode, records) {
   });
   html += '</tbody></table></div>';
   html += expandCollapseBtns;
+
+  if (!filtered.length) html += '<p role="status">此地區目前沒有最近紀錄。</p>';
   // 資料來源
   html += `<div class="data-source">資料來源：<a href="https://ebird.org/region/${locationCode}/recent-checklists" target="_blank">eBird 最新紀錄紀錄 - ${regionName}</a></div>`;
   // 只更新內容（不再加地區列，因 fetchAndRender 已處理）
@@ -320,5 +330,16 @@ document.addEventListener('DOMContentLoaded', function() {
     window.location.replace(url.toString());
     return;
   }
-  fetchAndRender(location);
+  if (!/^[A-Za-z0-9-]+$/.test(location)) location = 'TW';
+  const load = () => fetchAndRender(location).catch(error => {
+    const loading = document.querySelector('.loading');
+    if (!loading) return;
+    loading.setAttribute('role', 'alert');
+    loading.textContent = error.message;
+    const retry = document.createElement('button');
+    retry.textContent = '重試';
+    retry.addEventListener('click', load);
+    loading.appendChild(retry);
+  });
+  load();
 });

@@ -1,11 +1,11 @@
 # recent-hotspots/proxy_server.py
 from flask import Flask, request, Response, send_from_directory
 import requests
-import asyncio
-from flask import stream_with_context
+import re
+from html import escape
+from urllib.parse import quote
 
 # Playwright 相關
-from playwright.sync_api import sync_playwright
 from flask_cors import CORS
 import markdown
 
@@ -97,9 +97,23 @@ CORS(app)
 @app.route('/proxy')
 def proxy():
     url = request.args.get('url')
-    if not url or not url.startswith('https://ebird.org/'):
+    match = re.fullmatch(r'https://ebird\.org/region/([A-Za-z0-9-]+)/recent-checklists', url or '')
+    if not match:
         return Response('Invalid URL', status=400)
     try:
+        api_key = os.environ.get('EBIRD_API_KEY')
+        if api_key:
+            response = requests.get(
+                f'https://api.ebird.org/v2/product/lists/{match[1]}',
+                params={'maxResults': 200},
+                headers={'X-eBirdApiToken': api_key}, timeout=(5, 20),
+            )
+            response.raise_for_status()
+            html = checklist_html(response.json())
+            return Response(html, content_type='text/html; charset=utf-8')
+        if os.environ.get('VERCEL'):
+            return Response('請在 Vercel 設定 EBIRD_API_KEY 並重新部署，以使用 eBird 官方 API。', status=503)
+        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
         # 用 Playwright headless Chromium 抓取渲染後的 HTML
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -108,20 +122,48 @@ def proxy():
                 locale='zh-TW',
             )
             page = context.new_page()
-            page.goto(url, wait_until='networkidle', timeout=30000)
-            # 等待可能的 JS 驗證跳轉
-            # 若有中間頁面，等待自動跳轉
             try:
-                # 以 eBird 主要內容區塊為例，通常有 <main> 或 id="main"
-                page.wait_for_selector('main, #main', timeout=5000)
-            except Exception:
-                # 若 5 秒內沒等到，直接繼續
-                pass
-            html = page.content()
-            browser.close()
+                page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                # 驗證頁也有 main；必須等到真正的紀錄清單，包含合法空清單。
+                page.wait_for_selector('.RecentChecklists', state='attached', timeout=60000)
+                html = page.content()
+            except PlaywrightTimeoutError:
+                return Response('eBird 驗證或載入逾時，請稍後重試；也可設定 EBIRD_API_KEY 使用官方 API。', status=504)
+            finally:
+                browser.close()
         return Response(html, status=200, content_type='text/html; charset=utf-8')
-    except Exception as ex:
-        return Response(f'Error: {ex}', status=500)
+    except requests.RequestException:
+        return Response('eBird API 請求失敗，請確認金鑰、網路或稍後重試。', status=502)
+    except Exception:
+        app.logger.exception('Failed to fetch recent checklists')
+        return Response('無法載入 eBird 資料，請檢查伺服器紀錄及 Playwright 安裝。', status=502)
+
+
+def checklist_html(checklists):
+    """Adapt the official feed to the existing table parser, escaping all values."""
+    if not isinstance(checklists, list):
+        raise ValueError('Invalid checklist feed')
+    rows = []
+    for item in checklists:
+        loc = item['loc']
+        name = escape(str(loc['name']))
+        loc_id = quote(str(item['locId']), safe='')
+        sub_id = quote(str(item['subId']), safe='')
+        date = str(item.get('isoObsDate') or item['obsDt'])
+        if len(date) == 10 and item.get('obsTime'):
+            date += 'T' + str(item['obsTime'])
+        date = escape(date, quote=True)
+        location = f'<span class="u-loc-name">{name}</span>'
+        if loc.get('isHotspot'):
+            location = f'<a href="https://ebird.org/hotspot/{loc_id}">{location}</a>'
+        rows.append(
+            '<div class="Chk">'
+            f'<div class="Chk-species"><a href="https://ebird.org/checklist/{sub_id}">{int(item["numSpecies"])}</a></div>'
+            f'<div class="Chk-date"><time datetime="{date}">{date}</time></div>'
+            f'<div class="Chk-observer">{escape(str(item["userDisplayName"]))}</div>'
+            f'<div class="Chk-location">{location}</div></div>'
+        )
+    return '<div class="RecentChecklists">' + ''.join(rows) + '</div>'
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5000)

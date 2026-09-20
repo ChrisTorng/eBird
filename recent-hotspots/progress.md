@@ -78,3 +78,5 @@ Audited 17 packages in 6ms
 28. 不需檢查字串是否合法，只要有帶參數就直接使用。
 
 29. 增加安裝 uv 之說明。
+
+30. 使用 context7 工具取得 eBird API，先為我評估目前 index.py 中以 Playwright 抓取網頁的所有功能，是否可以使用 API 替代抓取而得? 我的目標是完全不要用 Playwright，僅以呼叫 API 方式抓取資料。請先為我評估，列出可被替代及無法替代的資料項目。

@@ -7,7 +7,7 @@
 
 我想由 eBird 的 [最新紀錄清單](https://ebird.org/region/TW/recent-checklists) 找到最近幾天的熱門地點，故建立了 [eBird 最近熱門地點](https://e-bird-christorngs-projects.vercel.app/recent-hotspots/) 網頁。可以選擇台灣的指定縣市，它會抓最近兩百個紀錄清單，將相同地點之項目群組起來，方便檢視最近幾天最多人去的地點。
 
-此功能目前只能在本機開發環境使用，參考 [本機開發執行](https://github.com/ChrisTorng/*eBird*#%E6%9C%AC%E6%A9%9F%E9%96%8B%E7%99%BC%E5%9F%B7%E8%A1%8C)。
+本機可使用 Playwright 抓取；設定 `EBIRD_API_KEY` 後，本機與 Vercel 都改用官方 API，不需啟動瀏覽器。
 
 ![](images/eBird-recent-hotspots.png)
 
@@ -20,7 +20,17 @@
 
 ## 本機開發執行
 
-「最近熱門鳥點」需要執行於本機開發執行環境，因為需要使用 Playwright 來抓取 eBird 網站的內容。
+未設定 API 金鑰時，本機使用 Playwright 抓取 eBird 網站。驗證頁通過後仍需等待真正的紀錄清單，最多等待導覽 30 秒及清單 60 秒；失敗會顯示原因及重試按鈕，不會當成零筆資料。
+
+### Vercel 與官方 API
+
+1. 登入 eBird，至 https://ebird.org/api/key 取得自己的 API 金鑰。
+2. 在 Vercel 專案的 Environment Variables 加入 `EBIRD_API_KEY`，勾選需要的部署環境，重新部署。
+3. 開啟 `/recent-hotspots/?location=TW` 確認有資料。
+
+伺服器呼叫 [官方 Recent checklists feed](https://documenter.getpostman.com/view/664302/S1ENwy59) 的 `/v2/product/lists/{regionCode}?maxResults=200`，金鑰只放在伺服器端。Vercel 未設定金鑰時會顯示設定提示，不嘗試啟動 Chromium。本機亦可先在 PowerShell 設定 `$env:EBIRD_API_KEY = '你的金鑰'`，再執行啟動腳本。
+
+API 提供地點、日期、鳥友顯示名稱與鳥種數；鳥友名稱顯示為純文字，地名使用 API 回傳名稱（可能與繁體中文網頁不同）。此版本 API 流程已有模擬回應測試，實際 Vercel 連線仍需設定有效金鑰後驗證。
 
 ### 第一次安裝啟動
 
@@ -47,6 +57,8 @@ python index.py
 1. 啟動既有虛擬環境 `.venv`
 2. 執行 `python index.py`
 3. 等待服務就緒並開啟瀏覽器 `http://localhost:5000/recent-hotspots/`
+
+Windows 服務在背景執行，紀錄存於 `local-server.log` 與 `local-server-error.log`。服務只接受本機連線。
 
 初次安裝 (建立 venv / 安裝套件 / Playwright) 請先依「第一次安裝啟動」手動完成，腳本不再自動安裝，避免覆寫或拖慢啟動。
 
