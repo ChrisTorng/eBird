@@ -1,16 +1,23 @@
-
-<!DOCTYPE html>
-<html lang="zh-TW">
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>eBird 最近熱門地點</title>
-  <link rel="stylesheet" href="index.css">
-  <script defer src="index.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eBird 最近熱門地點已搬遷</title>
+<link rel="canonical" href="https://christorng.idv.tw/eBirdRecentHotspot/">
 </head>
 <body>
-  <div class="container">
-    <div id="table-area"></div>
-  </div>
+<h1>eBird 最近熱門地點已搬遷</h1>
+<p><a id="destination" href="https://christorng.idv.tw/eBirdRecentHotspot/">前往新網站</a></p>
+<p><a href="https://github.com/ChrisTorng/eBirdRecentHotspot">新專案原始碼</a></p>
+<script>
+const destination = new URL('https://christorng.idv.tw/eBirdRecentHotspot/');
+const params = new URLSearchParams(window.location.search);
+for (const name of ['date', 'location']) {
+  if (params.has(name)) destination.searchParams.set(name, params.get(name));
+}
+document.getElementById('destination').href = destination.href;
+window.location.replace(destination.href);
+</script>
 </body>
 </html>
