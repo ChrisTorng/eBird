@@ -1,0 +1,10 @@
+{
+  "name": "ebird-alerts",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
