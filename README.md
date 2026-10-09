@@ -29,6 +29,18 @@ python -m http.server 8000 --bind 127.0.0.1
 瀏覽 `http://localhost:8000/alerts/`。無需安裝 Python 套件；也可使用任何靜態網頁伺服器。
 部署時將本 repo 當靜態網站提供即可，舊服務 URL 是否繼續可用取決於原主機設定。
 
+## 自動化測試
+
+需要 Node.js 22 或更新版本，在 repo 根目錄執行：
+
+```sh
+npm test
+```
+
+測試不需要安裝額外套件。會自動找出 `alerts/samples*.txt` 的所有範例，逐筆比對固定的預期結果，確認鳥種、數量、時間、地點、網址、回報人、媒體與備註，以及貼上後的條列／表格顯示。涵蓋舊版繁體、新版簡體（臺北市與桃園市）、Markdown 連結、多行地址、不同換行格式，以及共同回報人合併。
+
+新增或修改範例時，請同步人工檢查並更新 `tests/expected-alerts.json`；測試會檢查每份範例都有預期結果，避免漏測。GitHub Actions 會在每次 push 與 pull request 執行相同測試，也可手動執行。
+
 ## 原始碼
 
 [GitHub 原始碼](https://github.com/ChrisTorng/eBird)<br/>
