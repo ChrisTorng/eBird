@@ -1,4 +1,4 @@
-const { extractTitle, extractTitleDetail, extractAlertUrl, getRecords } = eBirdAlerts;
+const { extractTitle, describeAlertDestination, extractAlertUrl, getRecords } = eBirdAlerts;
 
 function isVirtualKeyboard() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -6,7 +6,6 @@ function isVirtualKeyboard() {
 
 const history = document.getElementById('history');
 const sourceElement = document.getElementById('source');
-const currentReportElement = document.getElementById('current-report');
 const noticeElement = document.getElementById('notice');
 const initialHtml = history.innerHTML;
 const initialTitle = document.title;
@@ -153,7 +152,6 @@ function showWelcome() {
     activeReportId = null;
     activeStyle = null;
     history.innerHTML = initialHtml;
-    currentReportElement.textContent = '';
     noticeElement.textContent = '';
     document.title = initialTitle;
     document.getElementById('table').checked = true;
@@ -168,12 +166,10 @@ function showReport(report, style) {
     document.getElementById('list').checked = style === 'list';
     document.getElementById('table').checked = style === 'table';
     noticeElement.textContent = '';
-    currentReportElement.textContent = report.title + '｜' + report.dateLabel + ' ' + report.date +
-        '｜' + (style === 'list' ? '條列' : '表格');
     document.title = report.title + '｜' + report.dateLabel + ' ' + report.date +
         '｜' + (style === 'list' ? '條列' : '表格') + ' - ' + initialTitle;
-    if (style === 'list') list(report.source);
-    else table(report.source);
+    if (style === 'list') list(report);
+    else table(report);
     scrollToTop();
 }
 
@@ -181,32 +177,36 @@ function scrollToTop() {
     window.scrollTo(0, 0);
 }
 
-function displayHeaderAndGetRecord(source) {
-    clearHistory();
-    const title = extractTitle(source);
-    let titleDetail;
-    if (title) {
-        titleDetail = extractTitleDetail(source);
-    }
-
-    const alertUrl = extractAlertUrl(source);
-    if (title) {
-        appendHistory("<a href='" + alertUrl + "' target='_blank' title='" + titleDetail +
-            "'><b>" + title + "</b></a>");
-    }
-
-    return getRecords(source);
+function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
 }
 
-function list(source) {
-    const records = displayHeaderAndGetRecord(source);
+function displayHeaderAndGetRecord(report, style) {
+    clearHistory();
+    const title = escapeHtml(report.title);
+    const tooltip = escapeHtml(describeAlertDestination(report.source));
+    const alertUrl = extractAlertUrl(report.source);
+    const link = alertUrl
+        ? '<a href="' + escapeHtml(alertUrl) + '" target="_blank" rel="noopener noreferrer" title="' + tooltip + '"><b>' + title + '</b></a>'
+        : '<b title="' + tooltip + '">' + title + '</b>';
+    const metadata = '｜' + report.dateLabel + ' ' + report.date +
+        '｜' + (style === 'list' ? '條列' : '表格');
+    // Keep the report information on the existing alert title line.
+    appendHistory(link + '<span class="report-meta">' + escapeHtml(metadata) + '</span>');
+    return getRecords(report.source);
+}
+
+function list(report) {
+    const records = displayHeaderAndGetRecord(report, 'list');
     for (const record of records) {
         outputListHtmlOrderByPlace(record);
     }
 }
 
-function table(source) {
-    const records = displayHeaderAndGetRecord(source);
+function table(report) {
+    const records = displayHeaderAndGetRecord(report, 'table');
     outputTable();
     for (const record of records) {
         addTableRow(record);
