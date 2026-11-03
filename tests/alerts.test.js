@@ -143,13 +143,13 @@ test('confirmed statuses and invalid input produce explicit results', () => {
 });
 
 // Run the actual browser scripts against a small DOM adapter, exercising paste and both views.
-function browserPage(style) {
+function browserPage(style, options = {}) {
     const tables = [];
     const elements = {};
     function table() {
         return { rows: [], insertRow() { const row = { innerHTML: '' }; this.rows.push(row); return row; } };
     }
-    const history = {
+    const output = {
         _html: '',
         get innerHTML() { return this._html; },
         set innerHTML(html) {
@@ -159,16 +159,79 @@ function browserPage(style) {
         },
         appendChild(element) { tables.push(element); }
     };
-    Object.assign(elements, { history, source: {}, list: {}, table: {} });
+    Object.assign(elements, {
+        history: output,
+        source: { focus() {} },
+        list: { id: 'list', checked: style === 'list' },
+        table: { id: 'table', checked: style === 'table' },
+        'current-report': { textContent: '' },
+        notice: { textContent: '' }
+    });
+
+    const listeners = {};
+    const location = { pathname: '/alerts/', search: '', hash: options.initialHash || '' };
+    const entries = [{ url: location.hash, state: null }];
+    let position = 0;
+    function visit(offset) {
+        if (position + offset < 0 || position + offset >= entries.length) return;
+        position += offset;
+        location.hash = entries[position].url;
+        for (const type of ['popstate', 'hashchange']) {
+            for (const handler of listeners[type] || []) handler();
+        }
+    }
+    const browserHistory = {
+        replaceState(state, _title, url) {
+            entries[position] = { state, url };
+            location.hash = url.startsWith('#') ? url : '';
+        },
+        pushState(state, _title, url) {
+            entries.splice(position + 1);
+            entries.push({ state, url });
+            position += 1;
+            location.hash = url;
+        },
+        back() { visit(-1); },
+        forward() { visit(1); }
+    };
+    const window = {
+        history: browserHistory, location, scrollTo() {},
+        addEventListener(type, handler) {
+            (listeners[type] ||= []).push(handler);
+        }
+    };
     let onpaste;
-    const context = vm.createContext({ console, navigator: { userAgent: 'Desktop' }, window: { scrollTo() {} },
-        document: { getElementById: id => elements[id], querySelector: () => ({ id: style }),
-            createElement: table, addEventListener(name, handler) { if (name === 'paste') onpaste = handler; } } });
+    const document = {
+        title: 'eBird 鳥訊快報整理',
+        getElementById: id => elements[id],
+        querySelector: () => elements.list.checked ? elements.list : elements.table,
+        createElement: table,
+        addEventListener(type, handler) { if (type === 'paste') onpaste = handler; }
+    };
+    const context = vm.createContext({
+        console, navigator: { userAgent: 'Desktop' }, window, document
+    });
     const html = read('index.html');
     const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(match => match[1]);
     assert.deepEqual(scripts, ['parser.js', 'index.js']);
     for (const script of scripts) vm.runInContext(read(script), context, { filename: script });
-    return { paste(source) { onpaste({ preventDefault() {}, clipboardData: { getData: () => source } }); }, tables, history };
+    return {
+        paste(source) { onpaste({ preventDefault() {}, clipboardData: { getData: () => source } }); },
+        click(view) {
+            elements.list.checked = view === 'list';
+            elements.table.checked = view === 'table';
+            elements[view].onclick();
+        },
+        back: () => browserHistory.back(),
+        forward: () => browserHistory.forward(),
+        get hash() { return location.hash; },
+        get entries() { return entries; },
+        get info() { return elements['current-report'].textContent; },
+        get notice() { return elements.notice.textContent; },
+        get title() { return document.title; },
+        get checked() { return elements.list.checked ? 'list' : 'table'; },
+        tables, history: output
+    };
 }
 
 for (const file of sampleFiles) {
@@ -186,3 +249,89 @@ for (const file of sampleFiles) {
         });
     }
 }
+
+test('pasting distinct reports creates navigable entries with location and date in hash', () => {
+    const page = browserPage('table');
+    page.paste(read('samplesSimplifiedTaipei.txt'));
+    const firstHash = page.hash;
+    assert.match(decodeURIComponent(firstHash), /臺北市/);
+    assert.match(firstHash, /2026-10-09/);
+    assert.match(page.info, /最新紀錄日 2026-10-09/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+
+    page.paste(read('samplesSimplifiedTaoyuan.txt'));
+    assert.equal(page.entries.length, 3);
+    assert.match(page.info, /桃園市/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 19);
+    page.back();
+    assert.equal(page.hash, firstHash);
+    assert.match(page.info, /臺北市/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+    page.forward();
+    assert.match(page.info, /桃園市/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 19);
+});
+
+test('view selection is a separate history step, restoring the correct radio and content', () => {
+    const page = browserPage('table');
+    page.paste(read('samplesSimplifiedTaipei.txt'));
+    const tableHash = page.hash;
+    page.click('list');
+    assert.match(page.hash, /\/list$/);
+    assert.equal(page.checked, 'list');
+    assert.equal(page.entries.length, 3);
+    page.click('list');
+    assert.equal(page.entries.length, 3);
+    page.back();
+    assert.equal(page.hash, tableHash);
+    assert.equal(page.checked, 'table');
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+    page.forward();
+    assert.equal(page.checked, 'list');
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+
+    page.back();
+    page.paste(read('samplesSimplifiedTaoyuan.txt'));
+    assert.equal(page.entries.length, 3, 'new navigation after back discards the old forward branch');
+});
+
+test('repeated paste creates independent entries; invalid and empty input preserve current report', () => {
+    const page = browserPage('table');
+    const source = read('samplesMultilineAddress.txt');
+    page.paste(source);
+    const firstHash = page.hash;
+    page.paste(source);
+    assert.equal(page.entries.length, 3);
+    assert.notEqual(page.hash, firstHash);
+    page.paste('');
+    assert.match(page.notice, /沒有可辨識/);
+    assert.equal(page.entries.length, 3);
+    page.paste('invalid clipboard text');
+    assert.match(page.notice, /格式不正確/);
+    assert.equal(page.entries.length, 3);
+    page.back();
+    assert.equal(page.hash, firstHash);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 1);
+});
+
+test('email Date header wins; otherwise observation date is explicitly labeled', () => {
+    const page = browserPage('table');
+    page.paste('Date: Thu, 15 Oct 2026 07:00:00 +0800\n' + read('samplesSimplifiedTaipei.txt'));
+    assert.match(page.info, /快報日期 2026-10-15/);
+    assert.match(page.hash, /2026-10-15/);
+});
+
+test('page reload clears URL, content and session history rather than restoring old hashes', () => {
+    const first = browserPage('table');
+    first.paste(read('samplesSimplifiedTaipei.txt'));
+    const oldHash = first.hash;
+    const fresh = browserPage('table', { initialHash: oldHash });
+    assert.equal(fresh.hash, '');
+    assert.equal(fresh.entries.length, 1);
+    assert.equal(fresh.info, '');
+    assert.equal(fresh.history.innerHTML, '');
+    fresh.paste(read('samplesSimplifiedTaoyuan.txt'));
+    assert.notEqual(fresh.hash, oldHash);
+    fresh.back();
+    assert.equal(fresh.info, '');
+});
