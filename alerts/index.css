@@ -53,3 +53,12 @@ div[contenteditable="true"] {
 .place-divider {
     border-top: 1px solid darkgray;
 }
+#history .report-meta {
+    font-size: small;
+    color: #555;
+}
+
+#notice:not(:empty) {
+    margin: 4px 0;
+    color: #a00000;
+}

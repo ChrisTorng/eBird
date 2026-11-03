@@ -143,13 +143,13 @@ test('confirmed statuses and invalid input produce explicit results', () => {
 });
 
 // Run the actual browser scripts against a small DOM adapter, exercising paste and both views.
-function browserPage(style) {
+function browserPage(style, options = {}) {
     const tables = [];
     const elements = {};
     function table() {
         return { rows: [], insertRow() { const row = { innerHTML: '' }; this.rows.push(row); return row; } };
     }
-    const history = {
+    const output = {
         _html: '',
         get innerHTML() { return this._html; },
         set innerHTML(html) {
@@ -159,16 +159,78 @@ function browserPage(style) {
         },
         appendChild(element) { tables.push(element); }
     };
-    Object.assign(elements, { history, source: {}, list: {}, table: {} });
+    Object.assign(elements, {
+        history: output,
+        source: { focus() {} },
+        list: { id: 'list', checked: style === 'list' },
+        table: { id: 'table', checked: style === 'table' },
+        notice: { textContent: '' }
+    });
+
+    const listeners = {};
+    const location = { pathname: '/alerts/', search: '', hash: options.initialHash || '' };
+    const entries = [{ url: location.hash, state: null }];
+    let position = 0;
+    function visit(offset) {
+        if (position + offset < 0 || position + offset >= entries.length) return;
+        position += offset;
+        location.hash = entries[position].url;
+        for (const type of ['popstate', 'hashchange']) {
+            for (const handler of listeners[type] || []) handler();
+        }
+    }
+    const browserHistory = {
+        replaceState(state, _title, url) {
+            entries[position] = { state, url };
+            location.hash = url.startsWith('#') ? url : '';
+        },
+        pushState(state, _title, url) {
+            entries.splice(position + 1);
+            entries.push({ state, url });
+            position += 1;
+            location.hash = url;
+        },
+        back() { visit(-1); },
+        forward() { visit(1); }
+    };
+    const window = {
+        history: browserHistory, location, scrollTo() {},
+        addEventListener(type, handler) {
+            (listeners[type] ||= []).push(handler);
+        }
+    };
     let onpaste;
-    const context = vm.createContext({ console, navigator: { userAgent: 'Desktop' }, window: { scrollTo() {} },
-        document: { getElementById: id => elements[id], querySelector: () => ({ id: style }),
-            createElement: table, addEventListener(name, handler) { if (name === 'paste') onpaste = handler; } } });
+    const document = {
+        title: 'eBird 鳥訊快報整理',
+        getElementById: id => elements[id],
+        querySelector: () => elements.list.checked ? elements.list : elements.table,
+        createElement: table,
+        addEventListener(type, handler) { if (type === 'paste') onpaste = handler; }
+    };
+    const context = vm.createContext({
+        console, navigator: { userAgent: 'Desktop' }, window, document
+    });
     const html = read('index.html');
     const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(match => match[1]);
     assert.deepEqual(scripts, ['parser.js', 'index.js']);
     for (const script of scripts) vm.runInContext(read(script), context, { filename: script });
-    return { paste(source) { onpaste({ preventDefault() {}, clipboardData: { getData: () => source } }); }, tables, history };
+    return {
+        paste(source) { onpaste({ preventDefault() {}, clipboardData: { getData: () => source } }); },
+        click(view) {
+            elements.list.checked = view === 'list';
+            elements.table.checked = view === 'table';
+            elements[view].onclick();
+        },
+        back: () => browserHistory.back(),
+        forward: () => browserHistory.forward(),
+        get hash() { return location.hash; },
+        get entries() { return entries; },
+        get heading() { return output.innerHTML; },
+        get notice() { return elements.notice.textContent; },
+        get title() { return document.title; },
+        get checked() { return elements.list.checked ? 'list' : 'table'; },
+        tables, history: output
+    };
 }
 
 for (const file of sampleFiles) {
@@ -186,3 +248,132 @@ for (const file of sampleFiles) {
         });
     }
 }
+
+test('pasting distinct reports creates navigable entries with location and date in hash', () => {
+    const page = browserPage('table');
+    page.paste(read('samplesSimplifiedTaipei.txt'));
+    const firstHash = page.hash;
+    assert.match(decodeURIComponent(firstHash), /臺北市/);
+    assert.match(firstHash, /2026-10-09/);
+    assert.match(page.heading, /最新紀錄日 2026-10-09/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+
+    page.paste(read('samplesSimplifiedTaoyuan.txt'));
+    assert.equal(page.entries.length, 3);
+    assert.match(page.heading, /桃園市/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 19);
+    page.back();
+    assert.equal(page.hash, firstHash);
+    assert.match(page.heading, /臺北市/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+    page.forward();
+    assert.match(page.heading, /桃園市/);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 19);
+});
+
+test('view selection is a separate history step, restoring the correct radio and content', () => {
+    const page = browserPage('table');
+    page.paste(read('samplesSimplifiedTaipei.txt'));
+    const tableHash = page.hash;
+    page.click('list');
+    assert.match(page.hash, /\/list$/);
+    assert.equal(page.checked, 'list');
+    assert.equal(page.entries.length, 3);
+    page.click('list');
+    assert.equal(page.entries.length, 3);
+    page.back();
+    assert.equal(page.hash, tableHash);
+    assert.equal(page.checked, 'table');
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+    page.forward();
+    assert.equal(page.checked, 'list');
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
+
+    page.back();
+    page.paste(read('samplesSimplifiedTaoyuan.txt'));
+    assert.equal(page.entries.length, 3, 'new navigation after back discards the old forward branch');
+});
+
+test('repeated paste creates independent entries; invalid and empty input preserve current report', () => {
+    const page = browserPage('table');
+    const source = read('samplesMultilineAddress.txt');
+    page.paste(source);
+    const firstHash = page.hash;
+    page.paste(source);
+    assert.equal(page.entries.length, 3);
+    assert.notEqual(page.hash, firstHash);
+    page.paste('');
+    assert.match(page.notice, /沒有可辨識/);
+    assert.equal(page.entries.length, 3);
+    page.paste('invalid clipboard text');
+    assert.match(page.notice, /格式不正確/);
+    assert.equal(page.entries.length, 3);
+    page.back();
+    assert.equal(page.hash, firstHash);
+    assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 1);
+});
+
+test('email Date header wins; otherwise observation date is explicitly labeled', () => {
+    const page = browserPage('table');
+    page.paste('Date: Thu, 15 Oct 2026 07:00:00 +0800\n' + read('samplesSimplifiedTaipei.txt'));
+    assert.match(page.heading, /快報日期 2026-10-15/);
+    assert.match(page.hash, /2026-10-15/);
+});
+
+test('page reload clears URL, content and session history rather than restoring old hashes', () => {
+    const first = browserPage('table');
+    first.paste(read('samplesSimplifiedTaipei.txt'));
+    const oldHash = first.hash;
+    const fresh = browserPage('table', { initialHash: oldHash });
+    assert.equal(fresh.hash, '');
+    assert.equal(fresh.entries.length, 1);
+    assert.equal(fresh.heading, '');
+    assert.equal(fresh.history.innerHTML, '');
+    fresh.paste(read('samplesSimplifiedTaoyuan.txt'));
+    assert.notEqual(fresh.hash, oldHash);
+    fresh.back();
+    assert.equal(fresh.heading, '');
+});
+
+test('report metadata appears only beside the existing linked heading, not in a separate header row', () => {
+    const page = browserPage('table');
+    page.paste(read('samplesSimplifiedTaipei.txt'));
+    assert.match(page.heading, /<a[^>]+title="[^"]+"[^>]*><b>臺北市 每天 鳥訊快報/);
+    assert.match(page.heading, /class="report-meta">｜最新紀錄日 2026-10-09｜表格/);
+    assert.equal((page.heading.match(/最新紀錄日/g) || []).length, 1);
+    assert.ok(!read('index.html').includes('id="current-report"'));
+    page.click('list');
+    assert.match(page.heading, /｜最新紀錄日 2026-10-09｜條列/);
+    page.back();
+    assert.match(page.heading, /｜最新紀錄日 2026-10-09｜表格/);
+});
+
+test('linked-title tooltips describe eBird destinations in Traditional Chinese', () => {
+    const sample = read('samplesMultilineAddress.txt');
+    const cases = [
+        ['謝謝您訂閱<每天> 需要New Taipei City的鳥訊快報。',
+            '新北市 每天 鳥訊快報', /需要鳥訊快報.*新北市.*尚未記錄過/],
+        ['謝謝您訂閱<每天> New Taipei City 當年度鳥訊快報。',
+            '新北市 每天 當年度鳥訊快報', /當年度需要鳥訊快報.*今年.*新北市/],
+        ['謝謝您訂閱<每天> New Taipei City 稀有鳥種快報。',
+            '新北市 每天 稀有鳥種快報', /稀有種鳥訊快報.*新北市.*稀有鳥種/],
+        ['謝謝您訂閱<每天> ABA 稀有種的鳥訊快報。',
+            'ABA 每天 稀有種鳥訊快報', /ABA 稀有種.*ABA 涵蓋範圍/],
+        ['感谢您订阅<每天> New Taipei City罕见鸟种快报。',
+            '新北市 每天 稀有鳥種快報', /稀有種鳥訊快報.*新北市.*稀有鳥種/],
+        ['感谢您订阅<每天> New Taipei City年度按需鸟讯快报。',
+            '新北市 每天 當年度鳥訊快報', /當年度需要鳥訊快報.*今年.*新北市/]
+    ];
+    for (const [header, expectedTitle, expectedDescription] of cases) {
+        const source = sample.replace(/^謝謝您訂閱.*$/m, header);
+        assert.equal(parser.extractTitle(source), expectedTitle);
+        const tooltip = parser.describeAlertDestination(source);
+        assert.match(tooltip, expectedDescription);
+        assert.match(tooltip, /最近 7 日.*變更或取消訂閱.*每天/);
+        assert.doesNotMatch(tooltip, /鸟|讯|订|录|见|报|罕见/);
+        const page = browserPage('table');
+        page.paste(source);
+        assert.ok(page.heading.includes('title="' + tooltip + '"'));
+        assert.ok(page.heading.includes('<b>' + expectedTitle + '</b>'));
+    }
+});

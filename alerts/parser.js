@@ -37,6 +37,9 @@
         if (!match) return fullTitle;
         const frequency = match[1];
         const rest = match[2];
+        if (/^ABA\s*稀有種(?:的鳥訊快報)?/.test(rest)) {
+            return 'ABA ' + frequency + ' 稀有種鳥訊快報';
+        }
         const kinds = [
             [/^需要\s*(.*?)的鳥訊快報/, '鳥訊快報'],
             [/^(.*?)(?:的)?(?:當年度鳥訊快報|当年度鸟讯快报|年度按需鸟讯快报|年度按需鳥訊快報)/, '當年度鳥訊快報'],
@@ -48,6 +51,37 @@
             if (city) return `${convertToChinesePlace(city[1].trim())} ${frequency} ${kind}`;
         }
         return `${frequency} ${rest} 鳥訊快報`;
+    }
+
+    // Describe the linked eBird subscription page, not the email summary.
+    function describeAlertDestination(text) {
+        const original = getFullTitle(text);
+        const title = extractTitle(text);
+        const frequency = original.match(/^<([^>]+)>/)?.[1] || '';
+        const delimiter = frequency ? ' ' + frequency + ' ' : '';
+        const index = delimiter ? title.indexOf(delimiter) : -1;
+        const place = index > 0 ? title.slice(0, index) : '';
+        const area = place && place !== 'ABA' ? '「' + place + '」' : '指定地區';
+        const isAba = /\bABA\b/i.test(original) && /稀有種|稀有鸟种|稀有鳥種/.test(original);
+        const isAnnual = /當年度|当年度|年度按需|今年|本年度/.test(original);
+        const isRare = /稀有種|稀有鸟种|稀有鳥種|罕見|罕见/.test(original);
+        let kind, summary;
+        if (isAba) {
+            kind = 'ABA 稀有種';
+            summary = '提供 ABA 涵蓋範圍內的稀有鳥種紀錄，不依個人是否看過該鳥種篩選';
+        } else if (isRare) {
+            kind = '稀有種鳥訊快報';
+            summary = '提供' + area + '的稀有鳥種賞鳥紀錄，不以個人是否已記錄過該鳥種為篩選條件';
+        } else if (isAnnual) {
+            kind = '當年度需要鳥訊快報';
+            summary = '提供你今年在' + area + '尚未記錄過的鳥種；即使該鳥種很稀有，若今年已記錄過也不再提醒';
+        } else {
+            kind = '需要鳥訊快報';
+            summary = '提供你過去在' + area + '尚未記錄過的鳥種；即使該鳥種很稀有，若已記錄過也不再提醒';
+        }
+        const schedule = frequency ? '訂閱頻率：' + frequency + '。' : '';
+        return '開啟 eBird「' + kind + '」訂閱摘要頁：' + summary +
+            '。可查看最近 7 日的賞鳥紀錄及訂閱資訊，並變更或取消訂閱。' + schedule;
     }
 
     function extractTitleDetail(text) {
@@ -163,7 +197,7 @@
         return merged;
     }
 
-    const api = { normalizeSource, getFullTitle, extractTitle, extractTitleDetail, extractAlertUrl,
+    const api = { normalizeSource, getFullTitle, extractTitle, describeAlertDestination, extractTitleDetail, extractAlertUrl,
         convertToChinesePlace, truncateOthers, makeChineseName, getRecord, getRecords,
         isMergeable, sortReporters, buildReporterHtml };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
