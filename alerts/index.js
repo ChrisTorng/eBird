@@ -77,7 +77,23 @@ function getReportDate(source, records) {
     // date is the date the alert was sent.
     const header = source.match(/^(?:Date|日期|寄送日期|傳送日期|发送日期)\s*[:：]\s*(.+)$/im);
     if (header) {
-        const sent = new Date(header[1].trim());
+        const headerText = header[1].trim();
+        // Preserve the calendar day written by the sender, even if the browser
+        // runs in a different timezone from the email's Date header.
+        const numeric = headerText.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/) ||
+            headerText.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+        const rfc = headerText.match(/\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})\b/i);
+        let sent;
+        if (numeric) {
+            sent = new Date(+numeric[1], +numeric[2] - 1, +numeric[3]);
+        } else if (rfc) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months.findIndex(name => name.toLowerCase() === rfc[2].toLowerCase());
+            sent = new Date(+rfc[3], month, +rfc[1]);
+        } else {
+            sent = new Date(headerText);
+        }
         if (!Number.isNaN(sent.getTime())) {
             return { date: formatDate(sent), dateLabel: '快報日期' };
         }
