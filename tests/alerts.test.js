@@ -164,7 +164,6 @@ function browserPage(style, options = {}) {
         source: { focus() {} },
         list: { id: 'list', checked: style === 'list' },
         table: { id: 'table', checked: style === 'table' },
-        'current-report': { textContent: '' },
         notice: { textContent: '' }
     });
 
@@ -226,7 +225,7 @@ function browserPage(style, options = {}) {
         forward: () => browserHistory.forward(),
         get hash() { return location.hash; },
         get entries() { return entries; },
-        get info() { return elements['current-report'].textContent; },
+        get heading() { return output.innerHTML; },
         get notice() { return elements.notice.textContent; },
         get title() { return document.title; },
         get checked() { return elements.list.checked ? 'list' : 'table'; },
@@ -256,19 +255,19 @@ test('pasting distinct reports creates navigable entries with location and date 
     const firstHash = page.hash;
     assert.match(decodeURIComponent(firstHash), /臺北市/);
     assert.match(firstHash, /2026-10-09/);
-    assert.match(page.info, /最新紀錄日 2026-10-09/);
+    assert.match(page.heading, /最新紀錄日 2026-10-09/);
     assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
 
     page.paste(read('samplesSimplifiedTaoyuan.txt'));
     assert.equal(page.entries.length, 3);
-    assert.match(page.info, /桃園市/);
+    assert.match(page.heading, /桃園市/);
     assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 19);
     page.back();
     assert.equal(page.hash, firstHash);
-    assert.match(page.info, /臺北市/);
+    assert.match(page.heading, /臺北市/);
     assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 14);
     page.forward();
-    assert.match(page.info, /桃園市/);
+    assert.match(page.heading, /桃園市/);
     assert.equal(page.tables.reduce((total, t) => total + t.rows.length, 0), 19);
 });
 
@@ -317,7 +316,7 @@ test('repeated paste creates independent entries; invalid and empty input preser
 test('email Date header wins; otherwise observation date is explicitly labeled', () => {
     const page = browserPage('table');
     page.paste('Date: Thu, 15 Oct 2026 07:00:00 +0800\n' + read('samplesSimplifiedTaipei.txt'));
-    assert.match(page.info, /快報日期 2026-10-15/);
+    assert.match(page.heading, /快報日期 2026-10-15/);
     assert.match(page.hash, /2026-10-15/);
 });
 
@@ -328,10 +327,53 @@ test('page reload clears URL, content and session history rather than restoring 
     const fresh = browserPage('table', { initialHash: oldHash });
     assert.equal(fresh.hash, '');
     assert.equal(fresh.entries.length, 1);
-    assert.equal(fresh.info, '');
+    assert.equal(fresh.heading, '');
     assert.equal(fresh.history.innerHTML, '');
     fresh.paste(read('samplesSimplifiedTaoyuan.txt'));
     assert.notEqual(fresh.hash, oldHash);
     fresh.back();
-    assert.equal(fresh.info, '');
+    assert.equal(fresh.heading, '');
+});
+
+test('report metadata appears only beside the existing linked heading, not in a separate header row', () => {
+    const page = browserPage('table');
+    page.paste(read('samplesSimplifiedTaipei.txt'));
+    assert.match(page.heading, /<a[^>]+title="[^"]+"[^>]*><b>臺北市 每天 鳥訊快報/);
+    assert.match(page.heading, /class="report-meta">｜最新紀錄日 2026-10-09｜表格/);
+    assert.equal((page.heading.match(/最新紀錄日/g) || []).length, 1);
+    assert.ok(!read('index.html').includes('id="current-report"'));
+    page.click('list');
+    assert.match(page.heading, /｜最新紀錄日 2026-10-09｜條列/);
+    page.back();
+    assert.match(page.heading, /｜最新紀錄日 2026-10-09｜表格/);
+});
+
+test('linked-title tooltips describe eBird destinations in Traditional Chinese', () => {
+    const sample = read('samplesMultilineAddress.txt');
+    const cases = [
+        ['謝謝您訂閱<每天> 需要New Taipei City的鳥訊快報。',
+            '新北市 每天 鳥訊快報', /需要鳥訊快報.*新北市.*尚未記錄過/],
+        ['謝謝您訂閱<每天> New Taipei City 當年度鳥訊快報。',
+            '新北市 每天 當年度鳥訊快報', /當年度需要鳥訊快報.*今年.*新北市/],
+        ['謝謝您訂閱<每天> New Taipei City 稀有鳥種快報。',
+            '新北市 每天 稀有鳥種快報', /稀有種鳥訊快報.*新北市.*稀有鳥種/],
+        ['謝謝您訂閱<每天> ABA 稀有種的鳥訊快報。',
+            'ABA 每天 稀有種鳥訊快報', /ABA 稀有種.*ABA 涵蓋範圍/],
+        ['感谢您订阅<每天> New Taipei City罕见鸟种快报。',
+            '新北市 每天 稀有鳥種快報', /稀有種鳥訊快報.*新北市.*稀有鳥種/],
+        ['感谢您订阅<每天> New Taipei City年度按需鸟讯快报。',
+            '新北市 每天 當年度鳥訊快報', /當年度需要鳥訊快報.*今年.*新北市/]
+    ];
+    for (const [header, expectedTitle, expectedDescription] of cases) {
+        const source = sample.replace(/^謝謝您訂閱.*$/m, header);
+        assert.equal(parser.extractTitle(source), expectedTitle);
+        const tooltip = parser.describeAlertDestination(source);
+        assert.match(tooltip, expectedDescription);
+        assert.match(tooltip, /最近 7 日.*變更或取消訂閱.*每天/);
+        assert.doesNotMatch(tooltip, /鸟|讯|订|录|见|报|罕见/);
+        const page = browserPage('table');
+        page.paste(source);
+        assert.ok(page.heading.includes('title="' + tooltip + '"'));
+        assert.ok(page.heading.includes('<b>' + expectedTitle + '</b>'));
+    }
 });
