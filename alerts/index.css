@@ -53,9 +53,9 @@ div[contenteditable="true"] {
 .place-divider {
     border-top: 1px solid darkgray;
 }
-#current-report:not(:empty) {
-    margin: 4px 0;
+#history .report-meta {
     font-size: small;
+    color: #555;
 }
 
 #notice:not(:empty) {
