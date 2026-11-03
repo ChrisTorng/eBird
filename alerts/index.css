@@ -53,3 +53,12 @@ div[contenteditable="true"] {
 .place-divider {
     border-top: 1px solid darkgray;
 }
+#current-report:not(:empty) {
+    margin: 4px 0;
+    font-size: small;
+}
+
+#notice:not(:empty) {
+    margin: 4px 0;
+    color: #a00000;
+}
