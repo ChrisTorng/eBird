@@ -4,88 +4,166 @@ function isVirtualKeyboard() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
-if (isVirtualKeyboard()) {
-    document.getElementById('source').focus();
-}
-
 const history = document.getElementById('history');
 const sourceElement = document.getElementById('source');
+const currentReportElement = document.getElementById('current-report');
+const noticeElement = document.getElementById('notice');
+const initialHtml = history.innerHTML;
+const initialTitle = document.title;
 const initialNotExistedPlace = 'initialNotExistedPlace';
+
+// All alert contents live only in this page instance. A reload starts a new session.
+const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+const reports = new Map();
+let nextReportId = 0;
+let activeReportId = null;
+let activeStyle = null;
 let lastPlace = initialNotExistedPlace;
-let value;
-let getFromClipboard = false;
 
-document.getElementById('list').onclick = async e => {
-    if (getFromClipboard || !value) {
-        value = await getClipboard();
-        getFromClipboard = true;
-    }
+window.history.replaceState(null, '', window.location.pathname + window.location.search);
+window.addEventListener('popstate', restoreNavigation);
+window.addEventListener('hashchange', restoreNavigation);
 
-    if (value) {
-        catchError(() => run(value));
-    }
-};
-document.getElementById('table').onclick = async e => {
-    if (getFromClipboard || !value) {
-        value = await getClipboard();
-        getFromClipboard = true;
-    }
+if (isVirtualKeyboard()) {
+    sourceElement.focus();
+}
 
-    if (value) {
-        catchError(() => run(value));
+document.getElementById('list').onclick = () => { void selectStyle('list'); };
+document.getElementById('table').onclick = () => { void selectStyle('table'); };
+
+async function selectStyle(style) {
+    if (activeReportId === null) {
+        try {
+            const clipboard = await getClipboard();
+            if (activeReportId === null) openSource(clipboard);
+        } catch (ex) {
+            showError(ex);
+        }
+        return;
     }
-};
+    if (activeStyle !== style) {
+        pushNavigation(reports.get(activeReportId), style);
+    }
+}
 
 async function getClipboard() {
-   try {
+    try {
         return await navigator.clipboard.readText();
     } catch {
-        throw '請複製全部鳥訊快報內容，貼入上方文字方塊。或請允許讀取剪貼簿權限要求。';
+        throw new Error('請複製全部鳥訊快報內容，貼入上方文字方塊。或請允許讀取剪貼簿權限要求。');
     }
 }
 
-document.getElementById('source').onpaste = e => {
-    e.preventDefault();
-    value = e.clipboardData.getData('text/plain');
-    catchError(() => run(value));
-};
-
+// One listener handles both the input box and page-wide Ctrl+V without double-pasting.
 document.addEventListener('paste', e => {
+    if (!e.clipboardData) return;
     e.preventDefault();
-    value = e.clipboardData.getData('text/plain');
-    catchError(() => run(value));
+    openSource(e.clipboardData.getData('text/plain'));
 });
 
-async function catchError(func) {
-    try {
-        func();
-    } catch (ex) {
-        clearHistory();
-        appendHistory(ex);
+function showError(ex) {
+    noticeElement.textContent = ex && ex.message ? ex.message : String(ex);
+    if (activeStyle) {
+        document.getElementById(activeStyle).checked = true;
     }
 }
 
-function run(value) {
-    const style = document.querySelector('input[name="style"]:checked');
-    if (style.id == "list") {
-        catchError(() => list(value));
+function formatDate(date) {
+    return date.getFullYear() + '-' + padTwoDigit(date.getMonth() + 1) + '-' + padTwoDigit(date.getDate());
+}
+
+function getReportDate(source, records) {
+    // A copied email body often omits the sent date. Never imply that an observation
+    // date is the date the alert was sent.
+    const header = source.match(/^(?:Date|日期|寄送日期|傳送日期|发送日期)\s*[:：]\s*(.+)$/im);
+    if (header) {
+        const sent = new Date(header[1].trim());
+        if (!Number.isNaN(sent.getTime())) {
+            return { date: formatDate(sent), dateLabel: '快報日期' };
+        }
     }
-    else if (style.id == "table") {
-        catchError(() => table(value));
+    const newest = new Date(Math.max(...records.map(record => record.date.getTime())));
+    return { date: formatDate(newest), dateLabel: '最新紀錄日' };
+}
+
+function openSource(source) {
+    if (!source || !source.trim()) {
+        showError(new Error('沒有可辨識的鳥訊快報內容。'));
+        return;
     }
+    try {
+        // Validate before changing the URL or discarding the previously shown alert.
+        const title = extractTitle(source);
+        const records = getRecords(source);
+        const meta = getReportDate(source, records);
+        const report = { id: ++nextReportId, source, title, date: meta.date, dateLabel: meta.dateLabel };
+        reports.set(report.id, report);
+        const selected = document.querySelector('input[name="style"]:checked');
+        pushNavigation(report, selected && selected.id === 'list' ? 'list' : 'table');
+    } catch (ex) {
+        showError(ex);
+    }
+}
+
+function getRoute(report, style) {
+    // Include a session token so URLs from before a reload cannot match new reports.
+    return '#/alert/' + sessionId + '/' + report.id + '/' + report.date + '/' +
+        encodeURIComponent(report.title) + '/' + style;
+}
+
+function pushNavigation(report, style) {
+    window.history.pushState({ eBirdSession: sessionId, reportId: report.id, style }, '', getRoute(report, style));
+    showReport(report, style);
+}
+
+function restoreNavigation() {
+    const parts = window.location.hash.split('/');
+    if (parts.length === 7 && parts[1] === 'alert' && parts[2] === sessionId &&
+        /^\d+$/.test(parts[3]) && (parts[6] === 'list' || parts[6] === 'table')) {
+        const report = reports.get(Number(parts[3]));
+        try {
+            if (report && parts[4] === report.date && decodeURIComponent(parts[5]) === report.title) {
+                showReport(report, parts[6]);
+                return;
+            }
+        } catch {
+            // Malformed or stale hash: return to the empty view.
+        }
+    }
+    showWelcome();
+}
+
+function showWelcome() {
+    activeReportId = null;
+    activeStyle = null;
+    history.innerHTML = initialHtml;
+    currentReportElement.textContent = '';
+    noticeElement.textContent = '';
+    document.title = initialTitle;
+    document.getElementById('table').checked = true;
+    document.getElementById('list').checked = false;
+    lastPlace = initialNotExistedPlace;
+    scrollToTop();
+}
+
+function showReport(report, style) {
+    activeReportId = report.id;
+    activeStyle = style;
+    document.getElementById('list').checked = style === 'list';
+    document.getElementById('table').checked = style === 'table';
+    noticeElement.textContent = '';
+    currentReportElement.textContent = report.title + '｜' + report.dateLabel + ' ' + report.date +
+        '｜' + (style === 'list' ? '條列' : '表格');
+    document.title = report.title + '｜' + report.dateLabel + ' ' + report.date +
+        '｜' + (style === 'list' ? '條列' : '表格') + ' - ' + initialTitle;
+    if (style === 'list') list(report.source);
+    else table(report.source);
     scrollToTop();
 }
 
 function scrollToTop() {
     window.scrollTo(0, 0);
 }
-
-// function getTruncatedForChatRecord(record) {
-//     const arr = record.split('\n');
-//     const removed = arr.splice(3, 2);
-//     const result = arr.join('\n');
-//     return result;
-// }
 
 function displayHeaderAndGetRecord(source) {
     clearHistory();
@@ -97,21 +175,22 @@ function displayHeaderAndGetRecord(source) {
 
     const alertUrl = extractAlertUrl(source);
     if (title) {
-        appendHistory(`<a href='${alertUrl}' target='_blank' title='${titleDetail}'><b>${title}</b></a>`);
+        appendHistory("<a href='" + alertUrl + "' target='_blank' title='" + titleDetail +
+            "'><b>" + title + "</b></a>");
     }
 
     return getRecords(source);
 }
 
 function list(source) {
-    const records = displayHeaderAndGetRecord(source)
+    const records = displayHeaderAndGetRecord(source);
     for (const record of records) {
         outputListHtmlOrderByPlace(record);
     }
 }
 
 function table(source) {
-    const records = displayHeaderAndGetRecord(source)
+    const records = displayHeaderAndGetRecord(source);
     outputTable();
     for (const record of records) {
         addTableRow(record);
